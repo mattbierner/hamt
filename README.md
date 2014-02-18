@@ -13,7 +13,7 @@ Javascript implementation is based on [exclipy's Haskell port][pdata].
 Node source is in `dist_node/hamt.js`
 
 ```
-$ npm install hamp
+$ npm install hamt
 ```
 
 ### Amd

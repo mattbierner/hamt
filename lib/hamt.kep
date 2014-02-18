@@ -466,6 +466,4 @@ removeHash = let del = constant nothing in
  */
 remove = \k m ->
     removeHash(hash k, k, m);
-
-
 }
