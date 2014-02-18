@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head></head>
+
+<body lang="en">
+    
+    <script type="application/javascript" src="resources/require.js"></script>
+    
+    <script type="application/javascript">
+        requirejs.config({
+            paths: {
+                'hamt': 'dist/hamt'
+            }
+        });
+
+        require([
+           'hamt'],
+        function(
+            hamt)
+        {
+            var h = hamt.empty;
+          //  for (var i = 'A'.charCodeAt(0); i < 'z'.charCodeAt(0); ++i) {
+            //    h = hamt.set(h, String.fromCharCode(i), i);
+            //}
+              //  var h1 = hamt.setHash(hamt.empty, 0, 'a', 3);
+                
+    var insert = ["n", "U", "p", "^", "h", "w", "W", "x", "S", "f", "H", "m", "g",
+               "l", "b", "_", "V", "Z", "G", "o", "F", "Q", "a", "k", "j", "r",
+               "B", "A", "y", "\\", "R", "D", "i", "c", "]", "C", "[", "e", "s",
+               "t", "J", "E", "q", "v", "M", "T", "N", "L", "K", "Y", "d", "P",
+               "u", "I", "O", "`", "X"];
+    
+    var remove = ["w", "m", "Q", "R", "i", "K", "P", "Y", "D", "g", "y", "L",
+                  "b", "[", "a", "t", "j", "W", "J", "G", "q", "r", "p", "U",
+                  "v", "h", "S", "_", "d", "x", "I", "F", "f", "n", "B", "\\",
+                  "k", "V", "N", "l", "X", "A", "]", "s", "Z", "O", "^", "o",
+                  "`", "H", "E", "e", "M", "u", "T", "c", "C"];
+    
+    var h = hamt.empty;
+    insert.forEach(function(x) {
+        h = hamt.set(h, x, x);
+    });
+    var ho =h;
+    for (var i = 0; i < remove.length; ++i) {
+        h = hamt.remove(h, remove[i]);
+        
+        for (var g = 0; g <= i; ++g) {
+          if (hamt.get(h, remove[g]) !== null) debugger;
+        }
+        for (var g = i + 1; g < remove.length; ++g) {
+            if (hamt.get(h, remove[g]) !==remove[g]) debugger;
+        }
+        hamt.remove(ho, remove[i]);
+        ho = h;
+    }
+
+
+        });
+    </script>
+
+</body>
+    
+</html>

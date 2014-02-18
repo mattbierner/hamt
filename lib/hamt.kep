@@ -1,0 +1,471 @@
+/**
+ * @fileOverview Hash Array Mapped Trie.
+ * 
+ * This code is based on: https://github.com/exclipy/pdata
+ * 
+ * Data structure can store any value except null.
+ */
+package(
+    hash
+    
+    empty
+    
+    getHash
+    get
+    
+    setHash
+    set
+    
+    modifyHash
+    modify
+    
+    removeHash
+    remove)
+{
+/* Configuration
+ ******************************************************************************/
+var size = 5;
+
+var mask = Math.pow(2, size) - 1;
+
+var maxIndexNode = Math.pow(2, size) / 2;
+
+var minArrayNode = Math.pow(2, size) / 4;
+
+/*
+ ******************************************************************************/
+var constant = \x -> \() -> x;
+
+/* Nothing
+ ******************************************************************************/
+var nothing = null;
+
+var isNothing = (===)@nothing;
+
+/* Bit Ops
+ ******************************************************************************/
+/**
+ * Hamming weight.
+ * 
+ * Taken from: http://jsperf.com/hamming-weight
+ */
+var popcount = let
+    m1 = 0x55555555,
+    m2 = 0x33333333,
+    m4 = 0x0f0f0f0f
+in
+    \num -> {
+        var x = num;
+        x = x - ((x >> 1) & m1);
+        x = (x & m2) + ((x >> 2) & m2); 
+        x = (x + (x >> 4)) & m4;
+        x = x + (x >> 8);
+        x = x + (x >> 16);
+        return (x & 0x7f);
+    };
+
+var hashFragment = \shift h ->
+    (h >>> shift) & mask;
+
+var toBitmap = \frag -> 1 << frag;
+
+var fromBitmap = \bitmap bit ->
+    popcount(bitmap & (toBitmap(bit) - 1));
+
+/* Array Ops
+ ******************************************************************************/
+var split = \at arr ->
+    [arr.slice(0, at), arr.slice(at)];
+
+var rest = \arr -> arr.slice(1);
+
+var arrayUpdate = \at v arr -> {
+    var out = [];
+    for (var i = 0, len = arr.length; i < len; i = i + 1)
+        out.(i) = arr.(i);
+    out.(at) = v;
+    return out;
+};
+
+/* 
+ ******************************************************************************/
+/**
+ * Get 32 bit hash of string.
+ * 
+ * Based on:
+ * http://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
+ */
+hash = \str -> {
+    var hash = 0;
+    for (var i = 0, len = str.length; i < len; i = i + 1)
+    with char = str.charCodeAt(i) in {
+        hash = (((hash << 5) - hash) + char) | 0;
+    }
+    return hash;
+};
+
+/* Node Structures
+ ******************************************************************************/
+/**
+ * Empty node.
+ */
+empty = {};
+
+/**
+ * Leaf holding a value.
+ * 
+ * @member hash Hash of key.
+ * @member key Key.
+ * @member value Value stored.
+ */
+var Leaf = function \hash key value =self-> {
+    self.hash = hash;
+    self.key = key;
+    self.value = value;
+};
+
+/**
+ * Leaf holding multiple values with the same hash but different keys.
+ * 
+ * @member hash Hash of key.
+ * @member list Array of key value pairs.
+ */
+var Collision = function \hash list =self-> {
+    self.hash = hash;
+    self.list = list;
+};
+
+/**
+ * Internal node with a sparse set of children.
+ * 
+ * Uses a bitmap and array to pack children.
+ * 
+ * @member mask Bitmap that encode the positions of children in the array.
+ * @member children Array of child nodes.
+ */
+var IndexedNode = function \mask children =self-> {
+    self.mask = mask;
+    self.children = children;
+};
+
+/**
+ * Internal node with many children.
+ * 
+ * @member count Number of children.
+ * @member children Array of child nodes.
+ */
+var ArrayNode = function \count children =self-> {
+    self.count = count;
+    self.children = children;
+};
+
+/* 
+ ******************************************************************************/
+var isEmpty = (===)@empty;
+
+/**
+ * Is `node` a leaf node?
+ */
+var isLeaf = \node ->
+    (  node === empty
+    || node instanceof Leaf
+    || node instanceof Collision);
+
+/**
+ * Expand an indexed node into an array node.
+ */
+var expand = \frag child bitmap subNodes -> {
+    var bit = bitmap;
+    var arr = [], count = 0;
+    for (var i = 0; i < 32; i = i + 1) {
+        if (bit & 1) {
+            arr.(i) = subNodes.(count);
+            count = count + 1;
+        } else {
+            arr.(i) = empty;
+        }
+        bit = bit >>> 1;
+    }
+    arr.(frag) = child;
+    return new ArrayNode(count + 1, arr);
+};
+
+/**
+ * Collapse an array node into a indexed node.
+ */
+var pack = \removed elements -> {
+    var children = [],
+        bitmap = 0;
+    
+    for (var i = 0, len = elements.length; i < len; i = i + 1)
+    with elem = elements.(i) in {
+        if (i !== removed && !isEmpty elem) {
+            children.push(elem);
+            bitmap = bitmap | (1 << i);
+        }
+    }
+    return new IndexedNode(bitmap, children);
+};
+
+/**
+ * Merge two leaf nodes.
+ * 
+ * @param shift Current shift.
+ * @param n1 Node.
+ * @param n2 Node.
+ */
+var mergeLeaves = \shift n1 n2 ->
+    ?isEmpty n2
+        :n1 
+        :let
+            h1 = n1.hash,
+            h2 = n2.hash
+        in
+            ?h1 === h2
+                :new Collision(h1, [
+                    [n2.key, n2.value],
+                    [n1.key, n1.value]])
+                :let
+                    subH1 = hashFragment(shift, h1),
+                    subH2 = hashFragment(shift, h2)
+                in
+                    new IndexedNode(toBitmap subH1 | toBitmap subH2,
+                        ?subH1 === subH2
+                            :[mergeLeaves(shift + size, n1, n2)]
+                            :?subH1 < subH2 :[n1, n2] :[n2, n1]);
+
+/**
+ * Update an entry in a collision list.
+ */
+var updateCollisionList = \list f k ->
+    ? !list.length
+        :[]
+        :let first = list.(0), rest = list.slice(1) in
+            ?first.(0) === k
+                :let v = f(first) in
+                    ?isNothing v
+                        :rest
+                        :[v].concat(rest)
+                :[first].concat(updateCollisionList(rest, f, k));
+
+/* Lookups
+ ******************************************************************************/
+/**
+ * empty::get
+ */
+empty.get = \_ _ _ -> nothing;
+
+/**
+ * Leaf::get
+ */
+Leaf.prototype.get = \_ _ k =self->
+    ?k === self.key
+        :self.value
+        :nothing;
+
+/**
+ * Collision::get
+ */
+Collision.prototype.get = \_ _ k =self-> {
+    for (var i = 0, len = self.list.length; i < len; i = i + 1)
+    with [key value] = self.list.(i) in {
+        if (k === key)
+            return value;
+    }
+    return nothing;
+};
+
+/**
+ * IndexedNode::get
+ */
+IndexedNode.prototype.get = \shift h k =self-> let
+    frag = hashFragment(shift, h)
+in
+    ?(self.mask & toBitmap frag)
+        :self.children.(fromBitmap(self.mask, frag)).get(shift + size, h, k)
+        :nothing;
+
+/**
+ * ArrayNode::get
+ */
+ArrayNode.prototype.get = \shift h k =self-> let
+    frag = hashFragment(shift, h),
+    child = self.children.(frag)
+in
+    child.get(shift + size, h, k);
+
+/* Editing
+ ******************************************************************************/
+/**
+ * empty::modify
+ */
+empty.modify = \_ f h k -> let
+    v = f(nothing)
+in
+    ?isNothing v
+        :empty
+        :new Leaf(h, k, v);
+
+/**
+ * Leaf::modify
+ */
+Leaf.prototype.modify = \shift f h k =self->
+    ?k === self.key
+        :let v = f(self.value) in
+            ?isNothing v
+                :empty
+                :new Leaf(h, k, v)
+        :mergeLeaves(shift, self, empty.modify(shift, f, h, k));
+
+/**
+ * Collision::modify
+ */
+Collision.prototype.modify = \shift f h k =self-> let
+    list = updateCollisionList(self.list, f, k)
+in
+    ?list.length > 1
+        :new Collision(self.hash, list)
+        :new Leaf(h, list.(0).(0), list.(0).(1));
+
+/**
+ * IndexedNode::modify
+ */
+IndexedNode.prototype.modify = \shift f h k =self-> let
+    frag = hashFragment(shift, h),
+    bit = toBitmap frag,
+    indx = fromBitmap(self.mask, frag),
+    exists = self.mask & bit,
+    child = (?exists : self.children.(indx) : empty).modify(shift + size, f, h, k),
+    
+    removed = exists && isEmpty child,
+    added = !exists && !isEmpty child,
+    
+    bound = ?removed
+        :self.children.length - 1
+        :?added
+            :self.children.length + 1
+            :self.children.length,
+            
+    [left, right] = split(indx, self.children),
+    
+    subNodes = ?removed
+        :left.concat(rest right)
+        :?added
+            :left.concat([child], right)
+            :arrayUpdate(indx, child, self.children),
+    
+    bitmap = ?removed
+        :self.mask & ~bit
+        :?added
+            :self.mask | bit
+            :self.mask
+in
+    ?!bitmap
+        :empty
+        :?bound === 0 && isLeaf(self.children.(0))
+            :self.children.(0)
+            :?added && bound >= maxIndexNode
+                :expand(frag, child, bitmap, subNodes)
+                :new IndexedNode(bitmap, subNodes);
+
+/**
+ * ArrayNode::modify
+ */
+ArrayNode.prototype.modify = \shift f h k =self-> let
+    frag = hashFragment(shift, h),
+    child = self.children.(frag),
+    newChild = child.modify(shift + size, f, h, k),
+    removed = child !== empty  && isEmpty newChild,
+    added = child === empty  && !isEmpty newChild
+in
+    ?added
+        :new ArrayNode(self.count + 1, arrayUpdate(frag, newChild, self.children))
+        :?removed
+            :?self.count - 1 <= minArrayNode
+                :pack(frag, self.children)
+                :new ArrayNode(self.count - 1, arrayUpdate(frag, empty, self.children))
+            :new ArrayNode(self.count, arrayUpdate(frag, newChild, self.children));
+
+/* Single Updates
+ ******************************************************************************/
+/**
+ * Lookup a value using the internal `hash` function to calculate the hash from `key`
+ * 
+ * Returns the value stored for the given hash an key or null if none.
+ * 
+ * @param h 32 bit hash.
+ * @param k Key.
+ * @param m HAMT
+ */
+getHash = \h k m ->
+    m.get(0, h, k);
+
+/**
+ * Lookup a value using the internal `hash` function to calculate the hash from `key`
+ * 
+ * @see getHash
+ */
+get = \k m ->
+    getHash(hash k, k, m);
+
+/**
+ * Modify the value stored for a hash.
+ * 
+ * Returns the modified data structure. The input `m` is not modified.
+ * 
+ * @param h 32 bit hash.
+ * @param k Key.
+ * @param f Function mapping current value to new value.
+ * @param m HAMT
+ */
+modifyHash = \h k f m ->
+    m.modify(0, f, h, k);
+
+/**
+ * Store a value using the internal `hash` function to calculate the hash from `key`
+ * 
+ * @see modifyHash
+ */
+modify = \k f m ->
+    modifyHash(hash k, k, f, m);
+
+/**
+ * Store a value with an explicit hash.
+ * 
+ * @param h 32 bit hash.
+ * @param k Key.
+ * @param v Value to store.
+ * @param m HAMT
+ */
+setHash = \h k v m ->
+    modifyHash(h, k, constant v, m);
+
+/**
+ * Store a value using the internal `hash` function to calculate the hash from `key`
+ * 
+ * @see setHash
+ */
+set = \k v m ->
+    setHash(hash k, k, v, m);
+
+/**
+ * Delete a value with an explicit hash.
+ * 
+ * @param m HAMT
+ * @param h 32 bit hash.
+ * @param k Key.
+ */
+removeHash = let del = constant nothing in
+    \h k m ->
+        modifyHash(h, k, del, m);
+
+/**
+ * Delete a value using the internal `hash` function to calculate the hash from `key`
+ * 
+ * @see removeHash
+ */
+remove = \k m ->
+    removeHash(hash k, k, m);
+
+
+}

@@ -1,0 +1,38 @@
+{
+    "name": "hamt",
+    "version": "0.0.0",
+    "description": "Hash Array Mapped Trie",
+    "keywords": [
+        "trie",
+	"map",
+        "persistent",
+        "data structure",
+        "hash"
+    ],
+    "author": "Matt Bierner",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git@github.com:mattbierner/hamt.git"
+    },
+    
+    "main": "dist_node/hamt.js",
+    "directories": {
+        "lib": "dist_node"
+    },
+    "files": [
+        "dist_node/",
+        "lib",
+        "test",
+	"test.js",
+        "index.js"
+    ],
+    "dependencies": {},
+    "devDependencies": {
+        "nodeunit": "0.8.x"
+    },
+    
+    "scripts": {
+        "test": "node test.js"
+    }
+}
