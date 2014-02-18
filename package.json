@@ -13,7 +13,7 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git@github.com:mattbierner/hamt.git"
+        "url": "https://github.com/mattbierner/hamt.git"
     },
     
     "main": "dist_node/hamt.js",
