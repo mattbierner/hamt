@@ -6,6 +6,14 @@ The [hash array mapped trie][hash-array-mapped-trie] is a [persistent][persisten
 map data structure with good lookup and update performance. This
 Javascript implementation is based on [exclipy's Haskell port][pdata].
 
+### Important Note
+Unless you are interested in hash array mapped trie implementation, you probably
+want to use [hashtrie][hashtrie] instead. Hashtrie is a drop in replacement for HAMT,
+has a richer api, and [will perform much better][benchmarks].
+
+Hash array mapped tries are a rather pointless space optimization in a high level
+scripting language like Javascript. And this HAMT implementation actually uses
+more memory than hashtrie.
 
 ## Install
 
@@ -81,7 +89,8 @@ hamt.get('b', h2); // 'y'
 ```
 
 
-
+[hashtrie]: https://github.com/mattbierner/hashtrie
+[benchmarks]: http://github.com/mattbierner/js-hashtrie-benchmark
 [pdata]: https://github.com/exclipy/pdata
 [hash-array-mapped-trie]: http://en.wikipedia.org/wiki/Hash_array_mapped_trie
 [persistent]: http://en.wikipedia.org/wiki/Persistent_data_structure
