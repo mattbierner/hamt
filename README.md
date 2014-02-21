@@ -15,7 +15,7 @@ Hash array mapped tries are a rather pointless space optimization in a high leve
 scripting language like Javascript. And this HAMT implementation actually uses
 more memory than hashtrie.
 
-The big exception is fold operations, which HAMT is significantly faster than 
+The big exception is fold operations, for which HAMT is significantly faster than 
 hashtrie. HAMT index nodes are stored in a dense array, while hashtrie's sparse
 arrays have [a lot of overhead for folds][http://jsperf.com/sparse-array-reduce-overhead].
 
