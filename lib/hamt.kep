@@ -159,7 +159,7 @@ hash = \str -> {
 /**
  * Empty node.
  */
-empty = {};
+empty = null;
 
 /**
  * Leaf holding a value.
@@ -178,11 +178,11 @@ var Leaf = function \hash key value =self-> {
  * Leaf holding multiple values with the same hash but different keys.
  * 
  * @member hash Hash of key.
- * @member list Array of key value pairs.
+ * @member children Array of collision children node.
  */
-var Collision = function \hash list =self-> {
+var Collision = function \hash children =self-> {
     self.hash = hash;
-    self.list = list;
+    self.children = children;
 };
 
 /**
@@ -211,7 +211,7 @@ var ArrayNode = function \count children =self-> {
 
 /* 
  ******************************************************************************/
-var isEmpty = (===)@empty;
+var isEmpty = (!);
 
 /**
  * Is `node` a leaf node?
@@ -231,8 +231,6 @@ var expand = \frag child bitmap subNodes -> {
         if (bit & 1) {
             arr.(i) = subNodes.(count);
             count = count + 1;
-        } else {
-            arr.(i) = empty;
         }
         bit = bit >>> 1;
     }
@@ -264,23 +262,20 @@ var pack = \removed elements -> {
  * @param n1 Node.
  * @param n2 Node.
  */
-var mergeLeaves = \shift n1 n2 ->
-    ?isEmpty n2
-        :n1 
+var mergeLeaves = \shift n1 n2 -> let
+    h1 = n1.hash,
+    h2 = n2.hash
+in
+    ?h1 === h2
+        :new Collision(h1, [n2, n1])
         :let
-            h1 = n1.hash,
-            h2 = n2.hash
+            subH1 = hashFragment(shift, h1),
+            subH2 = hashFragment(shift, h2)
         in
-            ?h1 === h2
-                :new Collision(h1, [n2, n1])
-                :let
-                    subH1 = hashFragment(shift, h1),
-                    subH2 = hashFragment(shift, h2)
-                in
-                    new IndexedNode(toBitmap subH1 | toBitmap subH2,
-                        ?subH1 === subH2
-                            :[mergeLeaves(shift + size, n1, n2)]
-                            :?subH1 < subH2 :[n1, n2] :[n2, n1]);
+            new IndexedNode(toBitmap subH1 | toBitmap subH2,
+                ?subH1 === subH2
+                    :[mergeLeaves(shift + size, n1, n2)]
+                    :?subH1 < subH2 :[n1, n2] :[n2, n1]);
 
 /**
  * Update an entry in a collision list.
@@ -298,10 +293,7 @@ var updateCollisionList = \list f k ->
 
 /* Lookups
  ******************************************************************************/
-/**
- * empty::get
- */
-empty.lookup = \_ _ _ -> nothing;
+var lookup;
 
 /**
  * Leaf::get
@@ -315,8 +307,8 @@ Leaf.prototype.lookup = \_ _ k =self->
  * Collision::get
  */
 Collision.prototype.lookup = \_ _ k =self-> {
-    for (var i = 0, len = self.list.length; i < len; i = i + 1)
-    with {key value} = self.list.(i) in {
+    for (var i = 0, len = self.children.length; i < len; i = i + 1)
+    with {key value} = self.children.(i) in {
         if (k === key)
             return value;
     }
@@ -330,7 +322,7 @@ IndexedNode.prototype.lookup = \shift h k =self-> let
     frag = hashFragment(shift, h)
 in
     ?(self.mask & toBitmap frag)
-        :self.children.(fromBitmap(self.mask, frag)).lookup(shift + size, h, k)
+        :lookup(self.children.(fromBitmap(self.mask, frag)), shift + size, h, k)
         :nothing;
 
 /**
@@ -340,19 +332,16 @@ ArrayNode.prototype.lookup = \shift h k =self-> let
     frag = hashFragment(shift, h),
     child = self.children.(frag)
 in
-    child.lookup(shift + size, h, k);
+    lookup(child, shift + size, h, k);
+
+lookup = \n shift h k ->
+    ?isEmpty n
+        :nothing
+        :n.lookup(shift, h, k);
 
 /* Editing
  ******************************************************************************/
-/**
- * empty::modify
- */
-empty.modify = \_ f h k -> let
-    v = f()
-in
-    ?isNothing v
-        :empty
-        :new Leaf(h, k, v);
+var alter;
 
 /**
  * Leaf::modify
@@ -363,14 +352,16 @@ Leaf.prototype.modify = \shift f h k =self->
             ?isNothing v
                 :empty
                 :new Leaf(h, k, v)
-        :mergeLeaves(shift, self, empty.modify(shift, f, h, k));
-                
+        :let v = f() in
+            ?isNothing v
+                :self
+                :mergeLeaves(shift, self, new Leaf(h, k, v));
 
 /**
  * Collision::modify
  */
 Collision.prototype.modify = \shift f h k =self-> let
-    list = updateCollisionList(self.list, f, k)
+    list = updateCollisionList(self.children, f, k)
 in
     ?list.length > 1
         :new Collision(self.hash, list)
@@ -384,7 +375,8 @@ IndexedNode.prototype.modify = \shift f h k =self-> let
     bit = toBitmap frag,
     indx = fromBitmap(self.mask, frag),
     exists = self.mask & bit,
-    child = (?exists : self.children.(indx) : empty).modify(shift + size, f, h, k),
+    
+    child = alter(?exists :self.children.(indx) :empty, shift + size, f, h, k),
     
     removed = exists && isEmpty child,
     added = !exists && !isEmpty child,
@@ -421,7 +413,7 @@ in
 ArrayNode.prototype.modify = \shift f h k =self-> let
     frag = hashFragment(shift, h),
     child = self.children.(frag),
-    newChild = child.modify(shift + size, f, h, k)
+    newChild = alter(child, shift + size, f, h, k)
 in
     ?isEmpty child && !isEmpty newChild
         // add
@@ -442,6 +434,14 @@ in
                 self.count,
                 arrayUpdate(frag, newChild, self.children));
 
+alter = \n shift f h k ->
+    ?isEmpty n
+        :let v = f() in
+            ?isNothing v
+                :empty
+                :new Leaf(h, k, v)
+        :n.modify(shift, f, h, k);
+
 /* Queries
  ******************************************************************************/
 /**
@@ -455,7 +455,7 @@ in
  * @param m Hashtrie
  */
 tryGetHash = \alt h k m  ->
-    maybe(m.lookup(0, h, k), alt);
+    maybe(lookup(m, 0, h, k), alt);
 
 /**
  * Lookup a value using the internal `hash`.
@@ -474,14 +474,16 @@ tryGet = \alt k m ->
  * @param k Key.
  * @param m Hashtrie
  */
-getHash = tryGetHash@null;
+getHash = \h k m ->
+    maybe(lookup(m, 0, h, k), null);
 
 /**
  * Lookup a value using the internal `hash`.
  * 
  * @see getHash
  */
-get = tryGet@null;
+get = \k m ->
+    getHash(hash k, k, m);
 
 /**
  * Does an entry exist?
@@ -491,7 +493,7 @@ get = tryGet@null;
  * @param m Hashtrie
  */
 hasHash = \h k m ->
-    !isNothing m.lookup(0, h, k);
+    !isNothing lookup(m, 0, h, k);
 
 /**
  * Check if a an entry exists using internal `hash`
@@ -514,7 +516,7 @@ has = \k m ->
  * @param m HAMT
  */
 modifyHash = \h k f m ->
-    m.modify(0, f, h, k);
+    alter(m, 0, f, h, k);
 
 /**
  * Store a value using the internal `hash` function to calculate the hash from `key`
@@ -565,11 +567,6 @@ remove = \k m ->
 /* Fold
  ******************************************************************************/
 /**
- * empty::fold
- */
-empty.fold = \_ z -> z;
-
-/**
  * Leaf::fold
  */
 Leaf.prototype.fold = \f z =self->
@@ -578,20 +575,41 @@ Leaf.prototype.fold = \f z =self->
 /**
  * Collision::fold
  */
-Collision.prototype.fold = \f z =self->
-    self.list.reduce(f, z);
+Collision.prototype.fold = \f z ={children}->
+    children.reduce(f, z);
 
 /**
  * IndexedNode::fold
+ * 
+ * `self.children.reduce(fold@f, z)`
  */
-IndexedNode.prototype.fold = \f z =self->
-    self.children.reduce(fold@f, z);
+IndexedNode.prototype.fold = \f z ={children}-> {
+    var z1 = z;
+    for (var i = 0, len = children.length; i < len; i = i + 1)
+    with c = children.(i) in {
+        z1 = ?c instanceof Leaf
+            :f(z1, c)
+            :c.fold(f, z1);
+    } 
+    return z1;
+};
 
 /**
  * ArrayNode::get
+ * 
+ * `self.children.reduce(fold@f, z)`
  */
-ArrayNode.prototype.fold = \f z =self->
-    self.children.reduce(fold@f, z);
+ArrayNode.prototype.fold = \f z ={children}-> {
+    var z1 = z;
+    for (var i = 0, len = children.length; i < len; i = i + 1)
+    with c = children.(i) in {
+        if (c)
+            z1 = ?c instanceof Leaf
+                :f(z1, c)
+                :c.fold(f, z1);
+    } 
+    return z1;
+};
 
 /**
  * Visit every entry in the map, aggregating data.
@@ -602,8 +620,10 @@ ArrayNode.prototype.fold = \f z =self->
  * @param z Starting value.
  * @param m Hashtrie
  */
-fold = \f z m ->
-    m.fold(f, z);
+fold = \f z m -> 
+    ?isEmpty m
+        :z
+        :m.fold(f, z);
 
 /* Aggregate
  ******************************************************************************/

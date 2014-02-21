@@ -9,11 +9,15 @@ Javascript implementation is based on [exclipy's Haskell port][pdata].
 ### Important Note
 Unless you are interested in hash array mapped trie implementation, you probably
 want to use [hashtrie][hashtrie] instead. Hashtrie is a drop in replacement for HAMT,
-has a richer api, and [will perform much better][benchmarks].
+has a richer api, and [will perform better for updates and gets][benchmarks].
 
 Hash array mapped tries are a rather pointless space optimization in a high level
 scripting language like Javascript. And this HAMT implementation actually uses
 more memory than hashtrie.
+
+The big exception is fold operations, which HAMT is significantly faster than 
+hashtrie. HAMT index nodes are stored in a dense array, while hashtrie's sparse
+arrays have [a lot of overhead for folds][http://jsperf.com/sparse-array-reduce-overhead].
 
 ## Install
 
