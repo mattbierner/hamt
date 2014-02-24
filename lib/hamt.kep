@@ -76,15 +76,14 @@ var popcount = let
     m2 = 0x33333333,
     m4 = 0x0f0f0f0f
 in
-    \num -> {
-        var x = num;
-        x = x - ((x >> 1) & m1);
-        x = (x & m2) + ((x >> 2) & m2); 
-        x = (x + (x >> 4)) & m4;
-        x = x + (x >> 8);
-        x = x + (x >> 16);
-        return (x & 0x7f);
-    };
+    \x -> let
+        x = x - ((x >> 1) & m1),
+        x = (x & m2) + ((x >> 2) & m2),
+        x = (x + (x >> 4)) & m4,
+        x = x + (x >> 8),
+        x = x + (x >> 16)
+    in
+        (x & 0x7f);
 
 var hashFragment = \shift h ->
     (h >>> shift) & mask;
@@ -381,18 +380,6 @@ IndexedNode.prototype.modify = \shift f h k =self-> let
     removed = exists && isEmpty child,
     added = !exists && !isEmpty child,
     
-    bound = ?removed
-        :self.children.length - 1
-        :?added
-            :self.children.length + 1
-            :self.children.length,
-    
-    subNodes = ?removed
-        :arraySpliceOut(indx, self.children)
-        :?added
-            :arraySpliceIn(indx, child, self.children)
-            :arrayUpdate(indx, child, self.children),
-    
     bitmap = ?removed
         :self.mask & ~bit
         :?added
@@ -401,11 +388,18 @@ IndexedNode.prototype.modify = \shift f h k =self-> let
 in
     ?!bitmap
         :empty
-        :?bound <= 0 && isLeaf(self.children.(0))
-            :self.children.(0)
-            :?bound >= maxIndexNode
-                :expand(frag, child, bitmap, subNodes)
-                :new IndexedNode(bitmap, subNodes);
+        :let
+            subNodes = ?removed
+                :arraySpliceOut(indx, self.children)
+                :?added
+                    :arraySpliceIn(indx, child, self.children)
+                    :arrayUpdate(indx, child, self.children)
+        in
+            ?subNodes.length <= 1 && isLeaf(subNodes.(0))
+                :subNodes.(0)
+                :?subNodes.length >= maxIndexNode
+                    :expand(frag, child, bitmap, subNodes)
+                    :new IndexedNode(bitmap, subNodes);
 
 /**
  * ArrayNode::modify
@@ -620,7 +614,7 @@ ArrayNode.prototype.fold = \f z ={children}-> {
  * @param z Starting value.
  * @param m Hashtrie
  */
-fold = \f z m -> 
+fold = \f z m ->
     ?isEmpty m
         :z
         :m.fold(f, z);

@@ -5,7 +5,7 @@
 define(["require", "exports"], (function(require, exports) {
     "use strict";
     var hash, empty, tryGetHash, tryGet, getHash, get, hasHash, has, setHash, set, modifyHash, modify,
-            removeHash, remove, fold, count, pairs, keys, values, m1, m2, m4, size = 5,
+            removeHash, remove, fold, count, pairs, keys, values, x, m1, m2, m4, x0, size = 5,
         BUCKET_SIZE = Math.pow(2, size),
         mask = (BUCKET_SIZE - 1),
         maxIndexNode = (BUCKET_SIZE / 2),
@@ -16,21 +16,19 @@ define(["require", "exports"], (function(require, exports) {
             });
         }),
         nothing = ({}),
-        isNothing = (function(x, y) {
+        isNothing = ((x = nothing), (function(y) {
             return (x === y);
-        })
-            .bind(null, nothing),
+        })),
         maybe = (function(val, def) {
             return (isNothing(val) ? def : val);
         }),
-        popcount = ((m1 = 1431655765), (m2 = 858993459), (m4 = 252645135), (function(num) {
-            var x = num;
-            (x = (x - ((x >> 1) & m1)));
-            (x = ((x & m2) + ((x >> 2) & m2)));
-            (x = ((x + (x >> 4)) & m4));
-            (x = (x + (x >> 8)));
-            (x = (x + (x >> 16)));
-            return (x & 127);
+        popcount = ((m1 = 1431655765), (m2 = 858993459), (m4 = 252645135), (function(x) {
+            var x0 = (x - ((x >> 1) & m1)),
+                x1 = ((x0 & m2) + ((x0 >> 2) & m2)),
+                x2 = ((x1 + (x1 >> 4)) & m4),
+                x3 = (x2 + (x2 >> 8)),
+                x4 = (x3 + (x3 >> 16));
+            return (x4 & 127);
         })),
         hashFragment = (function(shift, h) {
             return ((h >>> shift) & mask);
@@ -126,8 +124,8 @@ define(["require", "exports"], (function(require, exports) {
             return new(IndexedNode)(bitmap, children);
         }),
         mergeLeaves = (function(shift, n1, n2) {
-            var subH1, subH2, h1 = n1.hash,
-                h2 = n2.hash;
+            var h1 = n1.hash,
+                subH1, subH2, h2 = n2.hash;
             return ((h1 === h2) ? new(Collision)(h1, [n2, n1]) : ((subH1 = hashFragment(shift, h1)), (subH2 =
                 hashFragment(shift, h2)), new(IndexedNode)((toBitmap(subH1) | toBitmap(subH2)), ((
                 subH1 === subH2) ? [mergeLeaves((shift + size), n1, n2)] : ((subH1 < subH2) ? [
@@ -192,14 +190,12 @@ define(["require", "exports"], (function(require, exports) {
             child = alter((exists ? self.children[indx] : empty), (shift + size), f, h, k),
             removed = (exists && isEmpty(child)),
             added = ((!exists) && (!isEmpty(child))),
-            bound = (removed ? (self.children.length - 1) : (added ? (self.children.length + 1) : self.children
-                .length)),
-            subNodes = (removed ? arraySpliceOut(indx, self.children) : (added ? arraySpliceIn(indx,
-                child, self.children) : arrayUpdate(indx, child, self.children))),
-            bitmap = (removed ? (self.mask & (~bit)) : (added ? (self.mask | bit) : self.mask));
-        return ((!bitmap) ? empty : (((bound <= 0) && isLeaf(self.children[0])) ? self.children[0] : ((
-            bound >= maxIndexNode) ? expand(frag, child, bitmap, subNodes) : new(
-            IndexedNode)(bitmap, subNodes))));
+            subNodes, bitmap = (removed ? (self.mask & (~bit)) : (added ? (self.mask | bit) : self.mask));
+        return ((!bitmap) ? empty : ((subNodes = (removed ? arraySpliceOut(indx, self.children) : (
+            added ? arraySpliceIn(indx, child, self.children) : arrayUpdate(indx, child,
+                self.children)))), (((subNodes.length <= 1) && isLeaf(subNodes[0])) ? subNodes[
+            0] : ((subNodes.length >= maxIndexNode) ? expand(frag, child, bitmap, subNodes) :
+            new(IndexedNode)(bitmap, subNodes)))));
     }));
     (ArrayNode.prototype.modify = (function(shift, f, h, k) {
         var self = this,
@@ -290,10 +286,9 @@ define(["require", "exports"], (function(require, exports) {
     (fold = (function(f, z, m) {
         return (isEmpty(m) ? z : m.fold(f, z));
     }));
-    (count = fold.bind(null, (function(x, y) {
-            return (x + y);
-        })
-        .bind(null, 1), 0));
+    (count = fold.bind(null, ((x0 = 1), (function(y) {
+        return (x0 + y);
+    })), 0));
     var build = (function(p, __o) {
         var key = __o["key"],
             value = __o["value"];

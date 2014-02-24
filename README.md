@@ -6,18 +6,10 @@ The [hash array mapped trie][hash-array-mapped-trie] is a [persistent][persisten
 map data structure with good lookup and update performance. This
 Javascript implementation is based on [exclipy's Haskell port][pdata].
 
-### Important Note
-Unless you are interested in hash array mapped trie implementation, you probably
-want to use [hashtrie][hashtrie] instead. Hashtrie is a drop in replacement for HAMT,
-has a richer api, and [will perform better for updates and gets][benchmarks].
+[Benchmarks show][benchmarks] against [hashtrie][hashtrie],
+[persistent-hash-trie][persistent-hash-trie], and [Mori's hashmap][mori] show
+that this is the overall fastest persistent hash trie implementation.
 
-Hash array mapped tries are a rather pointless space optimization in a high level
-scripting language like Javascript. And this HAMT implementation actually uses
-more memory than hashtrie.
-
-The big exception is fold operations, for which HAMT is significantly faster than 
-hashtrie. HAMT index nodes are stored in a dense array, while hashtrie's sparse
-arrays have [a lot of overhead for folds][http://jsperf.com/sparse-array-reduce-overhead].
 
 ## Install
 
@@ -98,3 +90,6 @@ hamt.get('b', h2); // 'y'
 [pdata]: https://github.com/exclipy/pdata
 [hash-array-mapped-trie]: http://en.wikipedia.org/wiki/Hash_array_mapped_trie
 [persistent]: http://en.wikipedia.org/wiki/Persistent_data_structure
+
+[mori]: https://github.com/swannodette/mori
+[persistent-hash-trie]: https://github.com/hughfdjackson/persistent-hash-trie
