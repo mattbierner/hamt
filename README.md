@@ -67,7 +67,7 @@ h2 = hamt.modify('b', function(x) { return x + 'z'; }, h2);
 hamt.get('b', h2); // 'yz'
 
 // remove an entry
-h2 = hamt.remove('y', h2);
+h2 = hamt.remove('b', h2);
 hamt.get('a', h2); // 'x'
 hamt.get('b', h2); // null
 
@@ -82,6 +82,19 @@ var h2 = hamt.setHash(0, 'b', 'y', h1);
 
 hamt.get('a', h2); // 'x'
 hamt.get('b', h2); // 'y'
+
+// Aggregate Info
+var h = hamt.set('b', 'y', hamt.set('a', 'x', hamt.empty));
+
+hamt.count(h); // 2
+hamt.keys(h); // ['b', 'a'];
+hamt.values(h); // ['y', 'x'];
+hamt.pairs(h); // [['b', 'y'], ['a', 'x']];
+
+// Fold
+var h = hamt.set('a', 10, hamt.set('b', 4, hamt.set('c', -2, hamt.empty)));
+
+hamt.fold(\p {value} -> p + value, h); // 12
 ```
 
 

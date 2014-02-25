@@ -1,5 +1,8 @@
 # ChangeLog #
 
+## 0.1.3 - Feb 24, 2014
+* Create fewer temp arrays for `IndexNode` alter.
+
 ## 0.1.2 - Feb 24, 2014
 * Better collapsing of index nodes.
 * ~1.2x performance boost overall.

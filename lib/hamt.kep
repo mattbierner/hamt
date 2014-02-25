@@ -91,7 +91,7 @@ var hashFragment = \shift h ->
 var toBitmap = \frag -> 1 << frag;
 
 var fromBitmap = \bitmap bit ->
-    popcount(bitmap & (toBitmap(bit) - 1));
+    popcount(bitmap & (bit - 1));
 
 /* Array Ops
  ******************************************************************************/
@@ -222,6 +222,11 @@ var isLeaf = \node ->
 
 /**
  * Expand an indexed node into an array node.
+ * 
+ * @param frag Index of added child.
+ * @param child Added child.
+ * @param mask Index node mask before child added.
+ * @param subNodes Index node children before child added.
  */
 var expand = \frag child bitmap subNodes -> {
     var bit = bitmap;
@@ -318,10 +323,11 @@ Collision.prototype.lookup = \_ _ k =self-> {
  * IndexedNode::get
  */
 IndexedNode.prototype.lookup = \shift h k =self-> let
-    frag = hashFragment(shift, h)
+    frag = hashFragment(shift, h),
+    bit = toBitmap frag
 in
-    ?(self.mask & toBitmap frag)
-        :lookup(self.children.(fromBitmap(self.mask, frag)), shift + size, h, k)
+    ?self.mask & bit
+        :lookup(self.children.(fromBitmap(self.mask, bit)), shift + size, h, k)
         :nothing;
 
 /**
@@ -369,13 +375,13 @@ in
 /**
  * IndexedNode::modify
  */
-IndexedNode.prototype.modify = \shift f h k =self-> let
+IndexedNode.prototype.modify = \shift f h k =self#{children}-> let
     frag = hashFragment(shift, h),
     bit = toBitmap frag,
-    indx = fromBitmap(self.mask, frag),
+    indx = fromBitmap(self.mask, bit),
     exists = self.mask & bit,
     
-    child = alter(?exists :self.children.(indx) :empty, shift + size, f, h, k),
+    child = alter(?exists :children.(indx) :empty, shift + size, f, h, k),
     
     removed = exists && isEmpty child,
     added = !exists && !isEmpty child,
@@ -388,18 +394,26 @@ IndexedNode.prototype.modify = \shift f h k =self-> let
 in
     ?!bitmap
         :empty
-        :let
-            subNodes = ?removed
-                :arraySpliceOut(indx, self.children)
-                :?added
-                    :arraySpliceIn(indx, child, self.children)
-                    :arrayUpdate(indx, child, self.children)
-        in
-            ?subNodes.length <= 1 && isLeaf(subNodes.(0))
-                :subNodes.(0)
-                :?subNodes.length >= maxIndexNode
-                    :expand(frag, child, bitmap, subNodes)
-                    :new IndexedNode(bitmap, subNodes);
+        :?removed
+            // Remove
+            :?children.length <= 2 && isLeaf children.(indx^1)
+                :children.(indx^1) // collapse
+                :new IndexedNode(
+                    bitmap,
+                    arraySpliceOut(indx, self.children))
+            
+            :?added
+                // add
+                :?self.children.length >= maxIndexNode
+                    :expand(frag, child, self.mask, children)
+                    :new IndexedNode(
+                        bitmap,
+                        arraySpliceIn(indx, child, children))
+                
+                // Modify
+                :new IndexedNode(
+                    bitmap,
+                    arrayUpdate(indx, child, children));
 
 /**
  * ArrayNode::modify

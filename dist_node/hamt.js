@@ -36,7 +36,7 @@ var x, m1, m2, m4, x0, hash, empty, tryGetHash, tryGet, getHash, get, hasHash, h
         return (1 << frag);
     }),
     fromBitmap = (function(bitmap, bit) {
-        return popcount((bitmap & (toBitmap(bit) - 1)));
+        return popcount((bitmap & (bit - 1)));
     }),
     arrayUpdate = (function(at, v, arr) {
         var out = arr.slice();
@@ -154,9 +154,10 @@ var Leaf = (function(hash, key, value) {
 }));
 (IndexedNode.prototype.lookup = (function(shift, h, k) {
     var self = this,
-        frag = hashFragment(shift, h);
-    return ((self.mask & toBitmap(frag)) ? lookup(self.children[fromBitmap(self.mask, frag)], (shift + size), h,
-        k) : nothing);
+        frag = hashFragment(shift, h),
+        bit = toBitmap(frag);
+    return ((self.mask & bit) ? lookup(self.children[fromBitmap(self.mask, bit)], (shift + size), h, k) :
+        nothing);
 }));
 (ArrayNode.prototype.lookup = (function(shift, h, k) {
     var self = this,
@@ -180,19 +181,20 @@ var alter;
 }));
 (IndexedNode.prototype.modify = (function(shift, f, h, k) {
     var self = this,
+        children = self["children"],
         frag = hashFragment(shift, h),
         bit = toBitmap(frag),
-        indx = fromBitmap(self.mask, frag),
+        indx = fromBitmap(self.mask, bit),
         exists = (self.mask & bit),
-        child = alter((exists ? self.children[indx] : empty), (shift + size), f, h, k),
+        child = alter((exists ? children[indx] : empty), (shift + size), f, h, k),
         removed = (exists && isEmpty(child)),
         added = ((!exists) && (!isEmpty(child))),
-        subNodes, bitmap = (removed ? (self.mask & (~bit)) : (added ? (self.mask | bit) : self.mask));
-    return ((!bitmap) ? empty : ((subNodes = (removed ? arraySpliceOut(indx, self.children) : (added ?
-        arraySpliceIn(indx, child, self.children) : arrayUpdate(indx, child, self.children)))), (((
-        subNodes.length <= 1) && isLeaf(subNodes[0])) ? subNodes[0] : ((subNodes.length >=
-        maxIndexNode) ? expand(frag, child, bitmap, subNodes) : new(IndexedNode)(bitmap,
-        subNodes)))));
+        bitmap = (removed ? (self.mask & (~bit)) : (added ? (self.mask | bit) : self.mask));
+    return ((!bitmap) ? empty : (removed ? (((children.length <= 2) && isLeaf(children[(indx ^ 1)])) ? children[
+        (indx ^ 1)] : new(IndexedNode)(bitmap, arraySpliceOut(indx, self.children))) : (added ? ((self.children
+        .length >= maxIndexNode) ? expand(frag, child, self.mask, children) : new(IndexedNode)(
+        bitmap, arraySpliceIn(indx, child, children))) : new(IndexedNode)(bitmap, arrayUpdate(indx,
+        child, children)))));
 }));
 (ArrayNode.prototype.modify = (function(shift, f, h, k) {
     var self = this,
