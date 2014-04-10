@@ -37,29 +37,28 @@ package(
     keys
     values)
 {
+
+var constant := \x -> \ -> x;
+
 /* Configuration
  ******************************************************************************/
-var size = 5;
+var size := 5;
 
-var BUCKET_SIZE = Math.pow(2, size);
+var BUCKET_SIZE := Math.pow(2, size);
 
-var mask = BUCKET_SIZE - 1;
+var mask := BUCKET_SIZE - 1;
 
-var maxIndexNode = BUCKET_SIZE / 2;
+var maxIndexNode := BUCKET_SIZE / 2;
 
-var minArrayNode = BUCKET_SIZE / 4;
-
-/*
- ******************************************************************************/
-var constant = \x -> \() -> x;
+var minArrayNode := BUCKET_SIZE / 4;
 
 /* Nothing
  ******************************************************************************/
-var nothing = ({});
+var nothing := ({});
 
-var isNothing = (===)@nothing;
+var isNothing := (===, nothing);
 
-var maybe = \val def ->
+var maybe := \val def ->
     ?isNothing val
         :def
         :val;
@@ -85,12 +84,12 @@ in
     in
         (x & 0x7f);
 
-var hashFragment = \shift h ->
+var hashFragment := \shift h ->
     (h >>> shift) & mask;
 
-var toBitmap = \frag -> 1 << frag;
+var toBitmap := \frag -> 1 << frag;
 
-var fromBitmap = \bitmap bit ->
+var fromBitmap := \bitmap bit ->
     popcount(bitmap & (bit - 1));
 
 /* Array Ops
@@ -102,8 +101,8 @@ var fromBitmap = \bitmap bit ->
  * @param v New value
  * @param arr Array.
  */
-var arrayUpdate = \at v arr -> {
-    var out = arr.slice();
+var arrayUpdate := \at v arr -> {
+    var out = arr.slice(); // copy
     out.(at) = v;
     return out;
 };
@@ -114,8 +113,8 @@ var arrayUpdate = \at v arr -> {
  * @param at Index to remove.
  * @param arr Array.
  */
-var arraySpliceOut = \at arr -> {
-    var out = arr.slice();
+var arraySpliceOut := \at arr -> {
+    var out = arr.slice(); // copy
     out.splice(at, 1);
     return out;
 };
@@ -127,8 +126,8 @@ var arraySpliceOut = \at arr -> {
  * @param v Value to insert,
  * @param arr Array.
  */
-var arraySpliceIn = \at v arr -> {
-    var out = arr.slice();
+var arraySpliceIn := \at v arr -> {
+    var out = arr.slice(); // copy
     out.splice(at, 0, v);
     return out;
 };
@@ -141,7 +140,7 @@ var arraySpliceIn = \at v arr -> {
  * Based on:
  * http://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
  */
-hash = \str -> {
+hash := \str -> {
     if (typeof str === 'number')
         return str;
     
@@ -158,7 +157,7 @@ hash = \str -> {
 /**
  * Empty node.
  */
-empty = null;
+empty := null;
 
 /**
  * Leaf holding a value.
@@ -167,7 +166,7 @@ empty = null;
  * @member key Key.
  * @member value Value stored.
  */
-var Leaf = function \hash key value =self-> {
+var Leaf := function \hash key value =self-> {
     self.hash = hash;
     self.key = key;
     self.value = value;
@@ -179,7 +178,7 @@ var Leaf = function \hash key value =self-> {
  * @member hash Hash of key.
  * @member children Array of collision children node.
  */
-var Collision = function \hash children =self-> {
+var Collision := function \hash children =self-> {
     self.hash = hash;
     self.children = children;
 };
@@ -192,7 +191,7 @@ var Collision = function \hash children =self-> {
  * @member mask Bitmap that encode the positions of children in the array.
  * @member children Array of child nodes.
  */
-var IndexedNode = function \mask children =self-> {
+var IndexedNode := function \mask children =self-> {
     self.mask = mask;
     self.children = children;
 };
@@ -203,14 +202,14 @@ var IndexedNode = function \mask children =self-> {
  * @member count Number of children.
  * @member children Array of child nodes.
  */
-var ArrayNode = function \count children =self-> {
+var ArrayNode := function \count children =self-> {
     self.count = count;
     self.children = children;
 };
 
 /* 
  ******************************************************************************/
-var isEmpty = (!);
+var isEmpty := (!);
 
 /**
  * Is `node` a leaf node?
@@ -231,7 +230,7 @@ var isLeaf = \node ->
 var expand = \frag child bitmap subNodes -> {
     var bit = bitmap;
     var arr = [], count = 0;
-    for (var i = 0; i < BUCKET_SIZE; i = i + 1) {
+    for (var i = 0; bit; i = i + 1) {
         if (bit & 1) {
             arr.(i) = subNodes.(count);
             count = count + 1;
@@ -339,7 +338,7 @@ ArrayNode.prototype.lookup = \shift h k =self-> let
 in
     lookup(child, shift + size, h, k);
 
-lookup = \n shift h k ->
+lookup := \n shift h k ->
     ?isEmpty n
         :nothing
         :n.lookup(shift, h, k);
@@ -351,7 +350,7 @@ var alter;
 /**
  * Leaf::modify
  */
-Leaf.prototype.modify = \shift f h k =self->
+Leaf.prototype.modify := \shift f h k =self->
     ?k === self.key
         :let v = f(self.value) in
             ?isNothing v
@@ -396,7 +395,7 @@ in
         :empty
         :?removed
             // Remove
-            :?children.length <= 2 && isLeaf children.(indx^1)
+            :?children.length <= 2 && isLeaf children.(indx ^ 1)
                 :children.(indx^1) // collapse
                 :new IndexedNode(
                     bitmap,
@@ -442,7 +441,7 @@ in
                 self.count,
                 arrayUpdate(frag, newChild, self.children));
 
-alter = \n shift f h k ->
+alter := \n shift f h k ->
     ?isEmpty n
         :let v = f() in
             ?isNothing v
@@ -462,7 +461,7 @@ alter = \n shift f h k ->
  * @param k Key.
  * @param m Hashtrie
  */
-tryGetHash = \alt h k m  ->
+tryGetHash := \alt h k m  ->
     maybe(lookup(m, 0, h, k), alt);
 
 /**
@@ -470,7 +469,7 @@ tryGetHash = \alt h k m  ->
  * 
  * @see getHash
  */
-tryGet = \alt k m ->
+tryGet := \alt k m ->
     tryGetHash(alt, hash k, k, m);
 
 /**
@@ -482,7 +481,7 @@ tryGet = \alt k m ->
  * @param k Key.
  * @param m Hashtrie
  */
-getHash = \h k m ->
+getHash := \h k m ->
     maybe(lookup(m, 0, h, k), null);
 
 /**
@@ -490,7 +489,7 @@ getHash = \h k m ->
  * 
  * @see getHash
  */
-get = \k m ->
+get := \k m ->
     getHash(hash k, k, m);
 
 /**
@@ -500,7 +499,7 @@ get = \k m ->
  * @param k Key.
  * @param m Hashtrie
  */
-hasHash = \h k m ->
+hasHash := \h k m ->
     !isNothing lookup(m, 0, h, k);
 
 /**
@@ -508,7 +507,7 @@ hasHash = \h k m ->
  * 
  * @see hashHash
  */
-has = \k m ->
+has := \k m ->
     hasHash(hash k, k, m);
 
 /* Single Updates
@@ -523,7 +522,7 @@ has = \k m ->
  * @param f Function mapping current value to new value.
  * @param m HAMT
  */
-modifyHash = \h k f m ->
+modifyHash := \h k f m ->
     alter(m, 0, f, h, k);
 
 /**
@@ -531,7 +530,7 @@ modifyHash = \h k f m ->
  * 
  * @see modifyHash
  */
-modify = \k f m ->
+modify := \k f m ->
     modifyHash(hash k, k, f, m);
 
 /**
@@ -542,7 +541,7 @@ modify = \k f m ->
  * @param v Value to store.
  * @param m HAMT
  */
-setHash = \h k v m ->
+setHash := \h k v m ->
     modifyHash(h, k, constant v, m);
 
 /**
@@ -550,7 +549,7 @@ setHash = \h k v m ->
  * 
  * @see setHash
  */
-set = \k v m ->
+set := \k v m ->
     setHash(hash k, k, v, m);
 
 /**
@@ -560,7 +559,7 @@ set = \k v m ->
  * @param h 32 bit hash.
  * @param k Key.
  */
-removeHash = let del = constant nothing in
+removeHash := let del = constant nothing in
     \h k m ->
         modifyHash(h, k, del, m);
 
@@ -569,7 +568,7 @@ removeHash = let del = constant nothing in
  * 
  * @see removeHash
  */
-remove = \k m ->
+remove := \k m ->
     removeHash(hash k, k, m);
 
 /* Fold
@@ -628,7 +627,7 @@ ArrayNode.prototype.fold = \f z ={children}-> {
  * @param z Starting value.
  * @param m Hashtrie
  */
-fold = \f z m ->
+fold := \f z m ->
     ?isEmpty m
         :z
         :m.fold(f, z);
@@ -638,7 +637,7 @@ fold = \f z m ->
 /**
  * Get the number of entries.
  */
-count = fold@((+)@1, 0);
+count = fold@ (+, 1) @ 0;
 
 /**
  * Get array of all key value pairs as arrays of [key, value].

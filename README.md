@@ -20,6 +20,17 @@ Node source is in `dist_node/hamt.js`
 $ npm install hamt
 ```
 
+```
+var hamt = require('hamt');
+
+var h = hamt.empty;
+
+h = hamt.set('key', 'value', h);
+
+...
+```
+
+
 ### Amd
 Amd source is in `dist/hamt.js`
 
@@ -36,6 +47,7 @@ function(hamt) {
     ...
 });
 ```
+
 
 ## Usage
 
