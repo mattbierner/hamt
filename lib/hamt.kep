@@ -42,15 +42,15 @@ var constant := \x -> \ -> x;
 
 /* Configuration
  ******************************************************************************/
-var size := 5;
+var SIZE := 5;
 
-var BUCKET_SIZE := Math.pow(2, size);
+var BUCKET_SIZE := Math.pow(2, SIZE);
 
 var mask := BUCKET_SIZE - 1;
 
-var maxIndexNode := BUCKET_SIZE / 2;
+var MAX_INDEX_NODE := BUCKET_SIZE / 2;
 
-var minArrayNode := BUCKET_SIZE / 4;
+var MIN_ARRAY_NODE := BUCKET_SIZE / 4;
 
 /* Nothing
  ******************************************************************************/
@@ -87,7 +87,7 @@ in
 var hashFragment := \shift h ->
     (h >>> shift) & mask;
 
-var toBitmap := \frag -> 1 << frag;
+var toBitmap := (<<, 1);
 
 var fromBitmap := \bitmap bit ->
     popcount(bitmap & (bit - 1));
@@ -277,7 +277,7 @@ in
         in
             new IndexedNode(toBitmap subH1 | toBitmap subH2,
                 ?subH1 === subH2
-                    :[mergeLeaves(shift + size, n1, n2)]
+                    :[mergeLeaves(shift + SIZE, n1, n2)]
                     :?subH1 < subH2 :[n1, n2] :[n2, n1]);
 
 /**
@@ -326,7 +326,7 @@ IndexedNode.prototype.lookup = \shift h k =self-> let
     bit = toBitmap frag
 in
     ?self.mask & bit
-        :lookup(self.children.(fromBitmap(self.mask, bit)), shift + size, h, k)
+        :lookup(self.children.(fromBitmap(self.mask, bit)), shift + SIZE, h, k)
         :nothing;
 
 /**
@@ -336,7 +336,7 @@ ArrayNode.prototype.lookup = \shift h k =self-> let
     frag = hashFragment(shift, h),
     child = self.children.(frag)
 in
-    lookup(child, shift + size, h, k);
+    lookup(child, shift + SIZE, h, k);
 
 lookup := \n shift h k ->
     ?isEmpty n
@@ -380,7 +380,7 @@ IndexedNode.prototype.modify = \shift f h k =self#{children}-> let
     indx = fromBitmap(self.mask, bit),
     exists = self.mask & bit,
     
-    child = alter(?exists :children.(indx) :empty, shift + size, f, h, k),
+    child = alter(?exists :children.(indx) :empty, shift + SIZE, f, h, k),
     
     removed = exists && isEmpty child,
     added = !exists && !isEmpty child,
@@ -393,26 +393,25 @@ IndexedNode.prototype.modify = \shift f h k =self#{children}-> let
 in
     ?!bitmap
         :empty
-        :?removed
-            // Remove
-            :?children.length <= 2 && isLeaf children.(indx ^ 1)
-                :children.(indx^1) // collapse
-                :new IndexedNode(
-                    bitmap,
-                    arraySpliceOut(indx, self.children))
+    
+    :?removed
+        :?children.length <= 2 && isLeaf children.(indx ^ 1)
+            :children.(indx ^ 1) // collapse
+            :new IndexedNode(
+                bitmap,
+                arraySpliceOut(indx, self.children))
             
-            :?added
-                // add
-                :?self.children.length >= maxIndexNode
-                    :expand(frag, child, self.mask, children)
-                    :new IndexedNode(
-                        bitmap,
-                        arraySpliceIn(indx, child, children))
-                
-                // Modify
-                :new IndexedNode(
-                    bitmap,
-                    arrayUpdate(indx, child, children));
+    :?added
+        :?self.children.length >= MAX_INDEX_NODE
+            :expand(frag, child, self.mask, children)
+            :new IndexedNode(
+                bitmap,
+                arraySpliceIn(indx, child, children))
+    
+    // Modify
+    :new IndexedNode(
+        bitmap,
+        arrayUpdate(indx, child, children));
 
 /**
  * ArrayNode::modify
@@ -420,26 +419,26 @@ in
 ArrayNode.prototype.modify = \shift f h k =self-> let
     frag = hashFragment(shift, h),
     child = self.children.(frag),
-    newChild = alter(child, shift + size, f, h, k)
+    newChild = alter(child, shift + SIZE, f, h, k)
 in
     ?isEmpty child && !isEmpty newChild
         // add
         :new ArrayNode(
             self.count + 1,
             arrayUpdate(frag, newChild, self.children))
-        
-        :?!isEmpty child && isEmpty newChild
-            // remove
-            :?self.count - 1 <= minArrayNode
-                :pack(frag, self.children)
-                :new ArrayNode(
-                    self.count - 1,
-                    arrayUpdate(frag, empty, self.children))
-            
-            // Modify
+    
+    :?!isEmpty child && isEmpty newChild
+        // remove
+        :?self.count - 1 <= MIN_ARRAY_NODE
+            :pack(frag, self.children)
             :new ArrayNode(
-                self.count,
-                arrayUpdate(frag, newChild, self.children));
+                self.count - 1,
+                arrayUpdate(frag, empty, self.children))
+    
+    // Modify
+    :new ArrayNode(
+        self.count,
+        arrayUpdate(frag, newChild, self.children));
 
 alter := \n shift f h k ->
     ?isEmpty n
@@ -637,7 +636,7 @@ fold := \f z m ->
 /**
  * Get the number of entries.
  */
-count = fold@ (+, 1) @ 0;
+count = fold @ (+, 1) @ 0;
 
 /**
  * Get array of all key value pairs as arrays of [key, value].

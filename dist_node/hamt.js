@@ -5,8 +5,8 @@
 var hash, empty, tryGetHash, tryGet, getHash, get, hasHash, has, setHash, set, modifyHash, modify, removeHash, remove,
         fold, count, pairs, keys, values, BUCKET_SIZE = Math.pow(2, 5),
     mask = (BUCKET_SIZE - 1),
-    maxIndexNode = (BUCKET_SIZE / 2),
-    minArrayNode = (BUCKET_SIZE / 4),
+    MAX_INDEX_NODE = (BUCKET_SIZE / 2),
+    MIN_ARRAY_NODE = (BUCKET_SIZE / 4),
     nothing = ({}),
     popcount = (function(x) {
         var x0 = (x - ((x >> 1) & 1431655765)),
@@ -168,7 +168,7 @@ var alter;
         bitmap0 = (removed ? (self.mask & (~bit)) : (added ? (self.mask | bit) : self.mask));
     return ((!bitmap0) ? null : (removed ? (((children.length <= 2) && isLeaf(children[(indx ^ 1)])) ? children[
         (indx ^ 1)] : new(IndexedNode)(bitmap0, arraySpliceOut(indx, self.children))) : (added ? ((self
-        .children.length >= maxIndexNode) ? expand(frag, child, self.mask, children) : new(
+        .children.length >= MAX_INDEX_NODE) ? expand(frag, child, self.mask, children) : new(
         IndexedNode)(bitmap0, arraySpliceIn(indx, child, children))) : new(IndexedNode)(bitmap0,
         arrayUpdate(indx, child, children)))));
 }));
@@ -178,7 +178,7 @@ var alter;
         child = self.children[frag],
         newChild = alter(child, (shift + 5), f, h, k);
     return (((!child) && (!(!newChild))) ? new(ArrayNode)((self.count + 1), arrayUpdate(frag, newChild, self.children)) :
-        (((!(!child)) && (!newChild)) ? (((self.count - 1) <= minArrayNode) ? pack(frag, self.children) : new(
+        (((!(!child)) && (!newChild)) ? (((self.count - 1) <= MIN_ARRAY_NODE) ? pack(frag, self.children) : new(
             ArrayNode)((self.count - 1), arrayUpdate(frag, null, self.children))) : new(ArrayNode)(self.count,
             arrayUpdate(frag, newChild, self.children))));
 }));
