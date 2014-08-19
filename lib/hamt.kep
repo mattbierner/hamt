@@ -1,7 +1,7 @@
 /**
  * @fileOverview Hash Array Mapped Trie.
  * 
- * This code is based on: https://github.com/exclipy/pdata
+ * Code based on: https://github.com/exclipy/pdata
  */
 package(
     hash
@@ -54,7 +54,7 @@ var MIN_ARRAY_NODE := BUCKET_SIZE / 4;
  ******************************************************************************/
 var nothing := ({});
 
-var isNothing := (===, nothing);
+var isNothing := (=== nothing);
 
 var maybe := \val def ->
     ?isNothing val
@@ -92,6 +92,8 @@ var fromBitmap := \bitmap bit ->
 
 /* Array Ops
  ******************************************************************************/
+var copy := \arr -> arr.slice();
+
 /**
  * Set a value in an array.
  * 
@@ -100,7 +102,7 @@ var fromBitmap := \bitmap bit ->
  * @param arr Array.
  */
 var arrayUpdate := \at v arr -> {
-    var out = arr.slice(); // copy
+    var out := copy arr;
     out.(at) = v;
     return out;
 };
@@ -112,7 +114,7 @@ var arrayUpdate := \at v arr -> {
  * @param arr Array.
  */
 var arraySpliceOut := \at arr -> {
-    var out = arr.slice(); // copy
+    var out := copy arr;
     out.splice(at, 1);
     return out;
 };
@@ -125,7 +127,7 @@ var arraySpliceOut := \at arr -> {
  * @param arr Array.
  */
 var arraySpliceIn := \at v arr -> {
-    var out = arr.slice(); // copy
+    var out := copy arr;
     out.splice(at, 0, v);
     return out;
 };
@@ -281,16 +283,23 @@ in
 /**
  * Update an entry in a collision list.
  */
-var updateCollisionList = \list f k ->
-    ? !list.length
-        :[]
-        :let first = list.(0), rest = list.slice(1) in
-            ?first.key === k
-                :let v = f(first.value) in
-                    ?isNothing v
-                        :rest
-                        :[v].concat(rest)
-                :[first].concat(updateCollisionList(rest, f, k));
+var updateCollisionList = \list f k -> {
+    for (var i = 0, len = list.length; i < len; i = i + 1)
+    with child = list.(i) in {
+        if (child.key === k) {
+            return let v = f(child.value) in
+                ?isNothing v
+                    :arraySpliceOut(i, list)
+                    :arrayUpdate(i, v, list);
+        }
+    }
+    
+    return let v = f() in
+        ?isNothing v
+            :list
+            :arrayUpdate(list.length, v, list);
+};
+
 
 /* Lookups
  ******************************************************************************/
@@ -310,9 +319,9 @@ Leaf.prototype.lookup = \_ _ k =self->
 Collision.prototype.lookup = \_ h k =self-> {
     if (h === self.hash) {
         for (var i = 0, len = self.children.length; i < len; i = i + 1)
-        with {key value} = self.children.(i) in {
-            if (k === key)
-                return value;
+        with child = self.children.(i) in {
+            if (k === child.key)
+                return child.value;
         }
     }
     return nothing;
@@ -480,16 +489,14 @@ tryGet := \alt k m ->
  * @param k Key.
  * @param m Hashtrie
  */
-getHash := \h k m ->
-    maybe(lookup(m, 0, h, k), null);
+getHash := tryGetHash @ null;
 
 /**
  * Lookup a value using the internal `hash`.
  * 
  * @see getHash
  */
-get := \k m ->
-    getHash(hash k, k, m);
+get := tryGet @ null;
 
 /**
  * Does an entry exist?
@@ -585,27 +592,11 @@ Collision.prototype.fold = \f z ={children}->
     children.reduce(f, z);
 
 /**
- * IndexedNode::fold
+ * IndexedNode::fold, ArrayNode::fold
  * 
  * `self.children.reduce(fold@f, z)`
  */
-IndexedNode.prototype.fold = \f z ={children}-> {
-    var z1 = z;
-    for (var i = 0, len = children.length; i < len; i = i + 1)
-    with c = children.(i) in {
-        z1 = ?c instanceof Leaf
-            :f(z1, c)
-            :c.fold(f, z1);
-    } 
-    return z1;
-};
-
-/**
- * ArrayNode::get
- * 
- * `self.children.reduce(fold@f, z)`
- */
-ArrayNode.prototype.fold = \f z ={children}-> {
+IndexedNode.prototype.fold := ArrayNode.prototype.fold := \f z ={children}-> {
     var z1 = z;
     for (var i = 0, len = children.length; i < len; i = i + 1)
     with c = children.(i) in {
@@ -636,7 +627,7 @@ fold := \f z m ->
 /**
  * Get the number of entries.
  */
-count = fold @ (+, 1) @ 0;
+count = fold @ (+ 1) @ 0;
 
 /**
  * Get array of all key value pairs as arrays of [key, value].

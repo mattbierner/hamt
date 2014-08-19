@@ -106,10 +106,17 @@ var Leaf = (function(hash0, key, value) {
         ] : ((subH1 < subH2) ? [n1, n2] : [n2, n1])))));
     }),
     updateCollisionList = (function(list, f, k) {
-        var first, rest, v;
-        return ((!list.length) ? [] : ((first = list[0]), (rest = list.slice(1)), ((first.key === k) ? ((v = f(
-            first.value)), ((nothing === v) ? rest : [v].concat(rest))) : [first].concat(
-            updateCollisionList(rest, f, k)))));
+        for (var i = 0, len = list.length;
+            (i < len);
+            (i = (i + 1))) {
+            var child = list[i];
+            if ((child.key === k)) {
+                var v = f(child.value);
+                return ((nothing === v) ? arraySpliceOut(i, list) : arrayUpdate(i, v, list));
+            }
+        }
+        var v0 = f();
+        return ((nothing === v0) ? list : arrayUpdate(list.length, v0, list));
     }),
     lookup;
 (Leaf.prototype.lookup = (function(_, _0, k) {
@@ -122,10 +129,8 @@ var Leaf = (function(hash0, key, value) {
         for (var i = 0, len = self.children.length;
             (i < len);
             (i = (i + 1))) {
-            var __o = self.children[i],
-                key = __o["key"],
-                value = __o["value"];
-            if ((k === key)) return value;
+            var child = self.children[i];
+            if ((k === child.key)) return child.value;
         }
     }
     return nothing;
@@ -257,18 +262,6 @@ var del = (function() {
         children = __o["children"];
     return children.reduce(f, z);
 }));
-(IndexedNode.prototype.fold = (function(f, z) {
-    var __o = this,
-        children = __o["children"],
-        z1 = z;
-    for (var i = 0, len = children.length;
-        (i < len);
-        (i = (i + 1))) {
-        var c = children[i];
-        (z1 = ((c instanceof Leaf) ? f(z1, c) : c.fold(f, z1)));
-    }
-    return z1;
-}));
 (ArrayNode.prototype.fold = (function(f, z) {
     var __o = this,
         children = __o["children"],
@@ -283,6 +276,7 @@ var del = (function() {
     }
     return z1;
 }));
+(IndexedNode.prototype.fold = ArrayNode.prototype.fold);
 (fold = (function(f, z, m) {
     return ((!m) ? z : m.fold(f, z));
 }));

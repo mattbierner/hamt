@@ -1,5 +1,8 @@
 # ChangeLog #
 
+## 0.1.5 - August 18, 2014
+* Better `collision` update.
+
 ## 0.1.4 - April 10, 2014
 * Performance improvement from recompiled with Khepri V0.23.0 for inlining.
 * Stop iteration earlier on `expand`
