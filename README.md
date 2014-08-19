@@ -6,9 +6,12 @@ The [hash array mapped trie][hash-array-mapped-trie] is a [persistent][persisten
 map data structure with good lookup and update performance. This
 Javascript implementation is based on [exclipy's Haskell port][pdata].
 
-[Benchmarks show][benchmarks] against [hashtrie][hashtrie],
-[persistent-hash-trie][persistent-hash-trie], and [Mori's hashmap][mori] show
-that this is the overall fastest persistent hash trie implementation.
+[Benchmarks show][benchmarks] against other Javascript hash trie implementations show
+that this is the overall fastest persistent hash trie implementation for Javascript.
+
+[HAMT+][hamt_plus] is a fork of this library with a nearly identical API, that
+supports for transient mutation and custom key types. HAMT+ is [slightly slower][benchmarks]
+for most operations however.
 
 
 ## Install
@@ -16,11 +19,11 @@ that this is the overall fastest persistent hash trie implementation.
 ### Node
 Node source is in `dist_node/hamt.js`
 
-```
+``` javascript
 $ npm install hamt
 ```
 
-```
+``` javascript
 var hamt = require('hamt');
 
 var h = hamt.empty;
@@ -34,7 +37,7 @@ h = hamt.set('key', 'value', h);
 ### Amd
 Amd source is in `dist/hamt.js`
 
-```
+``` javascript
 requirejs.config({
     paths: {
         'hamt': 'dist/hamt'
@@ -51,7 +54,7 @@ function(hamt) {
 
 ## Usage
 
-```
+``` javascript
 var hamt = require('hamt');
 
 // empty table
@@ -110,6 +113,7 @@ hamt.fold(\p {value} -> p + value, h); // 12
 ```
 
 
+[hamt_plus]: https://github.com/mattbierner/hamt_plus
 [hashtrie]: https://github.com/mattbierner/hashtrie
 [benchmarks]: http://github.com/mattbierner/js-hashtrie-benchmark
 [pdata]: https://github.com/exclipy/pdata

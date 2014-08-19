@@ -2,8 +2,6 @@
  * @fileOverview Hash Array Mapped Trie.
  * 
  * This code is based on: https://github.com/exclipy/pdata
- * 
- * Data structure can store any value except null.
  */
 package(
     hash
@@ -278,7 +276,7 @@ in
             new IndexedNode(toBitmap subH1 | toBitmap subH2,
                 ?subH1 === subH2
                     :[mergeLeaves(shift + SIZE, n1, n2)]
-                    :?subH1 < subH2 :[n1, n2] :[n2, n1]);
+                    :?subH1 < subH2 : [n1, n2] : [n2, n1]);
 
 /**
  * Update an entry in a collision list.
@@ -309,11 +307,13 @@ Leaf.prototype.lookup = \_ _ k =self->
 /**
  * Collision::get
  */
-Collision.prototype.lookup = \_ _ k =self-> {
-    for (var i = 0, len = self.children.length; i < len; i = i + 1)
-    with {key value} = self.children.(i) in {
-        if (k === key)
-            return value;
+Collision.prototype.lookup = \_ h k =self-> {
+    if (h === self.hash) {
+        for (var i = 0, len = self.children.length; i < len; i = i + 1)
+        with {key value} = self.children.(i) in {
+            if (k === key)
+                return value;
+        }
     }
     return nothing;
 };
@@ -356,10 +356,10 @@ Leaf.prototype.modify := \shift f h k =self->
             ?isNothing v
                 :empty
                 :new Leaf(h, k, v)
-        :let v = f() in
-            ?isNothing v
-                :self
-                :mergeLeaves(shift, self, new Leaf(h, k, v));
+    :let v = f() in
+        ?isNothing v
+            :self
+            :mergeLeaves(shift, self, new Leaf(h, k, v));
 
 /**
  * Collision::modify
@@ -380,7 +380,7 @@ IndexedNode.prototype.modify = \shift f h k =self#{children}-> let
     indx = fromBitmap(self.mask, bit),
     exists = self.mask & bit,
     
-    child = alter(?exists :children.(indx) :empty, shift + SIZE, f, h, k),
+    child = alter(?exists : children.(indx) : empty, shift + SIZE, f, h, k),
     
     removed = exists && isEmpty child,
     added = !exists && !isEmpty child,

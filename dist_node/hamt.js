@@ -98,7 +98,8 @@ var Leaf = (function(hash0, key, value) {
     }),
     mergeLeaves = (function(shift, n1, n2) {
         var h1 = n1.hash,
-            subH1, subH2, h2 = n2.hash;
+            h2 = n2.hash,
+            subH1, subH2;
         return ((h1 === h2) ? new(Collision)(h1, [n2, n1]) : ((subH1 = ((h1 >>> shift) & mask)), (subH2 = ((h2 >>>
             shift) & mask)), new(IndexedNode)(((1 << subH1) | (1 << subH2)), ((subH1 === subH2) ? [
             mergeLeaves((shift + 5), n1, n2)
@@ -115,22 +116,25 @@ var Leaf = (function(hash0, key, value) {
     var self = this;
     return ((k === self.key) ? self.value : nothing);
 }));
-(Collision.prototype.lookup = (function(_, _0, k) {
+(Collision.prototype.lookup = (function(_, h, k) {
     var self = this;
-    for (var i = 0, len = self.children.length;
-        (i < len);
-        (i = (i + 1))) {
-        var __o = self.children[i],
-            key = __o["key"],
-            value = __o["value"];
-        if ((k === key)) return value;
+    if ((h === self.hash)) {
+        for (var i = 0, len = self.children.length;
+            (i < len);
+            (i = (i + 1))) {
+            var __o = self.children[i],
+                key = __o["key"],
+                value = __o["value"];
+            if ((k === key)) return value;
+        }
     }
     return nothing;
 }));
 (IndexedNode.prototype.lookup = (function(shift, h, k) {
     var self = this,
         frag = ((h >>> shift) & mask),
-        bitmap, bit = (1 << frag);
+        bit = (1 << frag),
+        bitmap;
     return ((self.mask & bit) ? lookup(self.children[((bitmap = self.mask), popcount((bitmap & (bit - 1))))], (
         shift + 5), h, k) : nothing);
 }));
@@ -209,7 +213,8 @@ var alter;
     return (!((y = ((!m) ? nothing : m.lookup(0, h, k))), (nothing === y)));
 }));
 (has = (function(k, m) {
-    var y, h = hash(k);
+    var h = hash(k),
+        y;
     return (!((y = ((!m) ? nothing : m.lookup(0, h, k))), (nothing === y)));
 }));
 (modifyHash = (function(h, k, f, m) {
@@ -217,7 +222,8 @@ var alter;
     return ((!m) ? ((v = f()), ((nothing === v) ? null : new(Leaf)(h, k, v))) : m.modify(0, f, h, k));
 }));
 (modify = (function(k, f, m) {
-    var v, h = hash(k);
+    var h = hash(k),
+        v;
     return ((!m) ? ((v = f()), ((nothing === v) ? null : new(Leaf)(h, k, v))) : m.modify(0, f, h, k));
 }));
 (setHash = (function(h, k, v, m) {
