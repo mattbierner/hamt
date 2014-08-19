@@ -592,11 +592,27 @@ Collision.prototype.fold = \f z ={children}->
     children.reduce(f, z);
 
 /**
- * IndexedNode::fold, ArrayNode::fold
+ * IndexedNode::fold
  * 
  * `self.children.reduce(fold@f, z)`
  */
-IndexedNode.prototype.fold := ArrayNode.prototype.fold := \f z ={children}-> {
+IndexedNode.prototype.fold := \f z ={children}-> {
+    var z1 = z;
+    for (var i = 0, len = children.length; i < len; i = i + 1)
+    with c = children.(i) in {
+        z1 = ?c instanceof Leaf
+            :f(z1, c)
+            :c.fold(f, z1);
+    } 
+    return z1;
+};
+
+/**
+ * ArrayNode::fold
+ * 
+ * `self.children.reduce(fold@f, z)`
+ */
+ArrayNode.prototype.fold := \f z ={children}-> {
     var z1 = z;
     for (var i = 0, len = children.length; i < len; i = i + 1)
     with c = children.(i) in {

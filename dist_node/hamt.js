@@ -262,6 +262,18 @@ var del = (function() {
         children = __o["children"];
     return children.reduce(f, z);
 }));
+(IndexedNode.prototype.fold = (function(f, z) {
+    var __o = this,
+        children = __o["children"],
+        z1 = z;
+    for (var i = 0, len = children.length;
+        (i < len);
+        (i = (i + 1))) {
+        var c = children[i];
+        (z1 = ((c instanceof Leaf) ? f(z1, c) : c.fold(f, z1)));
+    }
+    return z1;
+}));
 (ArrayNode.prototype.fold = (function(f, z) {
     var __o = this,
         children = __o["children"],
@@ -276,7 +288,6 @@ var del = (function() {
     }
     return z1;
 }));
-(IndexedNode.prototype.fold = ArrayNode.prototype.fold);
 (fold = (function(f, z, m) {
     return ((!m) ? z : m.fold(f, z));
 }));

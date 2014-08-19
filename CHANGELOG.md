@@ -1,5 +1,8 @@
 # ChangeLog #
 
+## 0.1.6 - August 19, 2014
+* Reverting `fold` to fix performance degradation.
+
 ## 0.1.5 - August 18, 2014
 * Better `collision` update.
 
