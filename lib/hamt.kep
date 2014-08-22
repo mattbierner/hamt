@@ -282,22 +282,26 @@ in
 
 /**
  * Update an entry in a collision list.
+ * 
+ * @param hash Hash of collision list.
+ * @param list Collision list.
+ * @param f Update function.
+ * @param k Key to update.
  */
-var updateCollisionList = \list f k -> {
-    for (var i = 0, len = list.length; i < len; i = i + 1)
+var updateCollisionList = \h list f k -> {
+    var target, i = 0;
+    for (var len = list.length; i < len; i = i + 1)
     with child = list.(i) in {
         if (child.key === k) {
-            return let v = f(child.value) in
-                ?isNothing v
-                    :arraySpliceOut(i, list)
-                    :arrayUpdate(i, v, list);
+            target = child;
+            break;
         }
     }
     
-    return let v = f() in
+    return let v = ?target : f(target.value) : f() in
         ?isNothing v
-            :list
-            :arrayUpdate(list.length, v, list);
+            :arraySpliceOut(i, list)
+            :arrayUpdate(i, new Leaf(h, k, v), list);
 };
 
 
@@ -374,7 +378,7 @@ Leaf.prototype.modify := \shift f h k =self->
  * Collision::modify
  */
 Collision.prototype.modify = \shift f h k =self-> let
-    list = updateCollisionList(self.children, f, k)
+    list = updateCollisionList(self.hash, self.children, f, k)
 in
     ?list.length > 1
         :new Collision(self.hash, list)
@@ -383,11 +387,11 @@ in
 /**
  * IndexedNode::modify
  */
-IndexedNode.prototype.modify = \shift f h k =self#{children}-> let
+IndexedNode.prototype.modify = \shift f h k ={mask children}-> let
     frag = hashFragment(shift, h),
     bit = toBitmap frag,
-    indx = fromBitmap(self.mask, bit),
-    exists = self.mask & bit,
+    indx = fromBitmap(mask, bit),
+    exists = mask & bit,
     
     child = alter(?exists : children.(indx) : empty, shift + SIZE, f, h, k),
     
@@ -395,10 +399,10 @@ IndexedNode.prototype.modify = \shift f h k =self#{children}-> let
     added = !exists && !isEmpty child,
     
     bitmap = ?removed
-        :self.mask & ~bit
+        :mask & ~bit
         :?added
-            :self.mask | bit
-            :self.mask
+            :mask | bit
+            :mask
 in
     ?!bitmap
         :empty
@@ -408,11 +412,11 @@ in
             :children.(indx ^ 1) // collapse
             :new IndexedNode(
                 bitmap,
-                arraySpliceOut(indx, self.children))
+                arraySpliceOut(indx, children))
             
     :?added
-        :?self.children.length >= MAX_INDEX_NODE
-            :expand(frag, child, self.mask, children)
+        :?children.length >= MAX_INDEX_NODE
+            :expand(frag, child, mask, children)
             :new IndexedNode(
                 bitmap,
                 arraySpliceIn(indx, child, children))
@@ -425,29 +429,29 @@ in
 /**
  * ArrayNode::modify
  */
-ArrayNode.prototype.modify = \shift f h k =self-> let
+ArrayNode.prototype.modify = \shift f h k ={count children}-> let
     frag = hashFragment(shift, h),
-    child = self.children.(frag),
+    child = children.(frag),
     newChild = alter(child, shift + SIZE, f, h, k)
 in
     ?isEmpty child && !isEmpty newChild
         // add
         :new ArrayNode(
-            self.count + 1,
-            arrayUpdate(frag, newChild, self.children))
+            count + 1,
+            arrayUpdate(frag, newChild, children))
     
     :?!isEmpty child && isEmpty newChild
         // remove
-        :?self.count - 1 <= MIN_ARRAY_NODE
-            :pack(frag, self.children)
+        :?count - 1 <= MIN_ARRAY_NODE
+            :pack(frag, children)
             :new ArrayNode(
-                self.count - 1,
-                arrayUpdate(frag, empty, self.children))
+                count - 1,
+                arrayUpdate(frag, empty, children))
     
     // Modify
     :new ArrayNode(
-        self.count,
-        arrayUpdate(frag, newChild, self.children));
+        count,
+        arrayUpdate(frag, newChild, children));
 
 alter := \n shift f h k ->
     ?isEmpty n
@@ -467,7 +471,7 @@ alter := \n shift f h k ->
  * @param alt Fallback value.
  * @param h 32 bit hash.
  * @param k Key.
- * @param m Hashtrie
+ * @param m HAMT
  */
 tryGetHash := \alt h k m  ->
     maybe(lookup(m, 0, h, k), alt);
@@ -487,7 +491,7 @@ tryGet := \alt k m ->
  * 
  * @param h 32 bit hash.
  * @param k Key.
- * @param m Hashtrie
+ * @param m HAMT
  */
 getHash := tryGetHash @ null;
 
@@ -503,7 +507,7 @@ get := tryGet @ null;
  * 
  * @param h 32 bit hash.
  * @param k Key.
- * @param m Hashtrie
+ * @param m HAMT
  */
 hasHash := \h k m ->
     !isNothing lookup(m, 0, h, k);
@@ -511,7 +515,7 @@ hasHash := \h k m ->
 /**
  * Check if a an entry exists using internal `hash`
  * 
- * @see hashHash
+ * @see hasHash
  */
 has := \k m ->
     hasHash(hash k, k, m);
@@ -631,7 +635,7 @@ ArrayNode.prototype.fold := \f z ={children}-> {
  * 
  * @param f Function mapping previous value and key value object to new value.
  * @param z Starting value.
- * @param m Hashtrie
+ * @param m HAMT
  */
 fold := \f z m ->
     ?isEmpty m
@@ -642,6 +646,8 @@ fold := \f z m ->
  ******************************************************************************/
 /**
  * Get the number of entries.
+ * 
+ * @param m HAMT.
  */
 count = fold @ (+ 1) @ 0;
 
@@ -649,6 +655,8 @@ count = fold @ (+ 1) @ 0;
  * Get array of all key value pairs as arrays of [key, value].
  * 
  * Order is not guaranteed.
+ *
+ * @param m HAMT.
  */
 pairs = let build = \p {key value} -> { p.push [key, value]; return p; } in
     \m ->
@@ -658,6 +666,8 @@ pairs = let build = \p {key value} -> { p.push [key, value]; return p; } in
  * Get array of all keys.
  * 
  * Order is not guaranteed.
+ * 
+ * @param m HAMT.
  */
 keys = let build = \p {key} -> { p.push key; return p; } in
     \m ->
@@ -667,6 +677,8 @@ keys = let build = \p {key} -> { p.push key; return p; } in
  * Get array of all values.
  * 
  * Order is not guaranteed, duplicates will be preserved.
+ * 
+ * @param m HAMT.
  */
 values = let build = \p {value} -> { p.push value; return p; } in
     \m ->

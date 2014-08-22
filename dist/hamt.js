@@ -1,7 +1,8 @@
 /*
- * THIS FILE IS AUTO GENERATED from 'lib/hamt.kep'
+ * THIS FILE IS AUTO GENERATED FROM 'lib/hamt.kep'
  * DO NOT EDIT
-*/define(["require", "exports"], (function(require, exports) {
+*/
+define(["require", "exports"], (function(require, exports) {
     "use strict";
     var hash, empty, tryGetHash, tryGet, getHash, get, hasHash, has, setHash, set, modifyHash, modify,
             removeHash, remove, fold, count, pairs, keys, values, BUCKET_SIZE = Math.pow(2, 5),
@@ -107,18 +108,19 @@
                 n2, n1
             ])))));
         }),
-        updateCollisionList = (function(list, f, k) {
-            for (var i = 0, len = list.length;
+        updateCollisionList = (function(h, list, f, k) {
+            var target, i = 0;
+            for (var len = list.length;
                 (i < len);
                 (i = (i + 1))) {
                 var child = list[i];
                 if ((child.key === k)) {
-                    var v = f(child.value);
-                    return ((nothing === v) ? arraySpliceOut(i, list) : arrayUpdate(i, v, list));
+                    (target = child);
+                    break;
                 }
             }
-            var v0 = f();
-            return ((nothing === v0) ? list : arrayUpdate(list.length, v0, list));
+            var v = (target ? f(target.value) : f());
+            return ((nothing === v) ? arraySpliceOut(i, list) : arrayUpdate(i, new(Leaf)(h, k, v), list));
         }),
         lookup;
     (Leaf.prototype.lookup = (function(_, _0, k) {
@@ -162,37 +164,39 @@
     }));
     (Collision.prototype.modify = (function(shift, f, h, k) {
         var self = this,
-            list = updateCollisionList(self.children, f, k);
+            list = updateCollisionList(self.hash, self.children, f, k);
         return ((list.length > 1) ? new(Collision)(self.hash, list) : list[0]);
     }));
     (IndexedNode.prototype.modify = (function(shift, f, h, k) {
-        var self = this,
-            children = self["children"],
+        var __o = this,
+            mask0 = __o["mask"],
+            children = __o["children"],
             frag = ((h >>> shift) & mask),
             bit = (1 << frag),
-            bitmap = self.mask,
+            bitmap = mask0,
             indx = popcount((bitmap & (bit - 1))),
-            exists = (self.mask & bit),
+            exists = (mask0 & bit),
             child = alter((exists ? children[indx] : null), (shift + 5), f, h, k),
             removed = (exists && (!child)),
             added = ((!exists) && (!(!child))),
-            bitmap0 = (removed ? (self.mask & (~bit)) : (added ? (self.mask | bit) : self.mask));
+            bitmap0 = (removed ? (mask0 & (~bit)) : (added ? (mask0 | bit) : mask0));
         return ((!bitmap0) ? null : (removed ? (((children.length <= 2) && isLeaf(children[(indx ^ 1)])) ?
-            children[(indx ^ 1)] : new(IndexedNode)(bitmap0, arraySpliceOut(indx, self.children))
-        ) : (added ? ((self.children.length >= MAX_INDEX_NODE) ? expand(frag, child, self.mask,
-                children) : new(IndexedNode)(bitmap0, arraySpliceIn(indx, child, children))) :
-            new(IndexedNode)(bitmap0, arrayUpdate(indx, child, children)))));
+                children[(indx ^ 1)] : new(IndexedNode)(bitmap0, arraySpliceOut(indx, children))) :
+            (added ? ((children.length >= MAX_INDEX_NODE) ? expand(frag, child, mask0, children) :
+                new(IndexedNode)(bitmap0, arraySpliceIn(indx, child, children))) : new(
+                IndexedNode)(bitmap0, arrayUpdate(indx, child, children)))));
     }));
     (ArrayNode.prototype.modify = (function(shift, f, h, k) {
-        var self = this,
+        var __o = this,
+            count = __o["count"],
+            children = __o["children"],
             frag = ((h >>> shift) & mask),
-            child = self.children[frag],
+            child = children[frag],
             newChild = alter(child, (shift + 5), f, h, k);
-        return (((!child) && (!(!newChild))) ? new(ArrayNode)((self.count + 1), arrayUpdate(frag,
-            newChild, self.children)) : (((!(!child)) && (!newChild)) ? (((self.count - 1) <=
-            MIN_ARRAY_NODE) ? pack(frag, self.children) : new(ArrayNode)((self.count - 1),
-            arrayUpdate(frag, null, self.children))) : new(ArrayNode)(self.count, arrayUpdate(
-            frag, newChild, self.children))));
+        return (((!child) && (!(!newChild))) ? new(ArrayNode)((count + 1), arrayUpdate(frag, newChild,
+            children)) : (((!(!child)) && (!newChild)) ? (((count - 1) <= MIN_ARRAY_NODE) ? pack(
+                frag, children) : new(ArrayNode)((count - 1), arrayUpdate(frag, null, children))) :
+            new(ArrayNode)(count, arrayUpdate(frag, newChild, children))));
     }));
     (alter = (function(n, shift, f, h, k) {
         var v;

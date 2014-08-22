@@ -22,46 +22,19 @@ exports.collision = function(test) {
     var h2 = hamt.setHash(0, 'b', 5, h1);
     
     var h3 = hamt.modify('a', function(x) { return x * 2; }, h2);
-
-    test.equal(hamt.getHash(0, 'a', h3), 3);
+    test.equal(hamt.getHash(0, 'a', h3), 6);
     test.equal(hamt.getHash(0, 'b', h3), 5);
     
+    var h4 = hamt.modify('b', function(x) { return x * 2; }, h3);
+    test.equal(hamt.getHash(0, 'a', h4), 6);
+    test.equal(hamt.getHash(0, 'b', h4), 10);
+    
+    // Non existant
+    var h5 = hamt.modifyHash(0, 'c', function(x) { return 100; }, h4);
+    test.equal(hamt.getHash(0, 'a', h5), 6);
+    test.equal(hamt.getHash(0, 'b', h5), 10);
+    test.equal(hamt.getHash(0, 'c', h5), 100);
+
     test.done();
 };
 
-exports.many_unorder = function(test) {
-    var arr = ["n", "U", "p", "^", "h", "w", "W", "x", "S", "f", "H", "m", "g",
-               "l", "b", "_", "V", "Z", "G", "o", "F", "Q", "a", "k", "j", "r",
-               "B", "A", "y", "\\", "R", "D", "i", "c", "]", "C", "[", "e", "s",
-               "t", "J", "E", "q", "v", "M", "T", "N", "L", "K", "Y", "d", "P",
-               "u", "I", "O", "`", "X"];
-    
-    var h = hamt.empty;
-    arr.forEach(function(x) {
-        h = hamt.set(x, x, h);
-    });
-    
-    arr.forEach(function(x) {
-        test.equal(
-            hamt.get(x, h),
-            x);
-    });
-
-    
-    test.done();
-};
-
-exports.many_ordered = function(test) {
-    var h = hamt.empty;
-    for (var i = 'A'.charCodeAt(0); i < 'z'.charCodeAt(0); ++i) {
-        h = hamt.set(String.fromCharCode(i), i, h);
-    }
-
-    for (var i = 'A'.charCodeAt(0); i < 'z'.charCodeAt(0); ++i) {
-        test.equal(
-            hamt.get(String.fromCharCode(i), h),
-            i);
-    }
-    
-    test.done();
-};

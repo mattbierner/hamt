@@ -1,5 +1,9 @@
 # ChangeLog #
 
+## 0.1.7 - August 22, 2014
+* Fix updates to collision list inserting value instead of Leaf nodes instead of
+  into collision list.
+
 ## 0.1.6 - August 19, 2014
 * Reverting `fold` to fix performance degradation.
 
