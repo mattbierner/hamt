@@ -283,7 +283,7 @@ in
 /**
  * Update an entry in a collision list.
  * 
- * @param hash Hash of collision list.
+ * @param hash Hash of collision.
  * @param list Collision list.
  * @param f Update function.
  * @param k Key to update.
@@ -303,7 +303,6 @@ var updateCollisionList = \h list f k -> {
             :arraySpliceOut(i, list)
             :arrayUpdate(i, new Leaf(h, k, v), list);
 };
-
 
 /* Lookups
  ******************************************************************************/
@@ -377,12 +376,16 @@ Leaf.prototype.modify := \shift f h k =self->
 /**
  * Collision::modify
  */
-Collision.prototype.modify = \shift f h k =self-> let
-    list = updateCollisionList(self.hash, self.children, f, k)
-in
-    ?list.length > 1
-        :new Collision(self.hash, list)
-        :list.(0);
+Collision.prototype.modify = \shift f h k =self#{hash children}->
+    ?h === hash
+        :let list = updateCollisionList(hash, children, f, k) in
+            ?list.length > 1
+                :new Collision(hash, list)
+                :list.(0) // collapse single element collision list
+    :let v = f() in
+        ?isNothing v
+            :self
+            :mergeLeaves(shift, self, new Leaf(h, k, v));
 
 /**
  * IndexedNode::modify

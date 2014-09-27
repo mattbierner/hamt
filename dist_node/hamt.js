@@ -161,9 +161,12 @@ var alter;
         (nothing === v0) ? self : mergeLeaves(shift, self, new(Leaf)(h, k, v0)))));
 }));
 (Collision.prototype.modify = (function(shift, f, h, k) {
-    var self = this,
-        list = updateCollisionList(self.hash, self.children, f, k);
-    return ((list.length > 1) ? new(Collision)(self.hash, list) : list[0]);
+    var list, v, self = this,
+        hash0 = self["hash"],
+        children = self["children"];
+    return ((h === hash0) ? ((list = updateCollisionList(hash0, children, f, k)), ((list.length > 1) ? new(
+        Collision)(hash0, list) : list[0])) : ((v = f()), ((nothing === v) ? self : mergeLeaves(shift, self,
+        new(Leaf)(h, k, v)))));
 }));
 (IndexedNode.prototype.modify = (function(shift, f, h, k) {
     var __o = this,

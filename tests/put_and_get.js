@@ -48,6 +48,18 @@ exports.collision = function(test) {
     test.done();
 };
 
+exports.collision_expansion = function(test) {
+    var h1 = hamt.setHash(0, 'a', 3, hamt.empty);
+    var h2 = hamt.setHash(0, 'b', 5, h1);
+    var h3 = hamt.setHash(1, 'c', 7, h2);
+
+    test.equal(hamt.getHash(0, 'a', h3), 3);
+    test.equal(hamt.getHash(0, 'b', h3), 5);
+    test.equal(hamt.getHash(1, 'c', h3), 7);
+
+    test.done();
+};
+
 exports.many_unorder = function(test) {
     var arr = ["n", "U", "p", "^", "h", "w", "W", "x", "S", "f", "H", "m", "g",
                "l", "b", "_", "V", "Z", "G", "o", "F", "Q", "a", "k", "j", "r",

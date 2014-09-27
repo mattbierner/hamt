@@ -1,6 +1,6 @@
 {
     "name": "hamt",
-    "version": "0.1.7",
+    "version": "0.1.8",
     "description": "Hash Array Mapped Trie",
     "keywords": [
         "trie",
