@@ -97,32 +97,50 @@ define(["require", "exports"], (function(require, exports) {
     (empty = ({
         __hamt_isEmpty: true
     }));
-    var Leaf = (function(hash0, key, value) {
-        var self = this;
-        (self.hash = hash0);
-        (self.key = key);
-        (self.value = value);
-    }),
+    var Leaf__lookup, Collision__lookup, IndexedNode__lookup, ArrayNode__lookup, Leaf__modify,
+            Collision__modify, IndexedNode__modify, ArrayNode__modify, Leaf__fold, Collision__fold,
+            IndexedNode__fold, ArrayNode__fold, Leaf = (function(hash0, key, value) {
+                return ({
+                    hash: hash0,
+                    key: key,
+                    value: value,
+                    lookup: Leaf__lookup,
+                    fold: Leaf__fold,
+                    modify: Leaf__modify
+                });
+            }),
         Collision = (function(hash0, children) {
-            var self = this;
-            (self.hash = hash0);
-            (self.children = children);
+            return ({
+                hash: hash0,
+                children: children,
+                lookup: Collision__lookup,
+                fold: Collision__fold,
+                modify: Collision__modify
+            });
         }),
         IndexedNode = (function(mask0, children) {
-            var self = this;
-            (self.mask = mask0);
-            (self.children = children);
+            return ({
+                mask: mask0,
+                children: children,
+                lookup: IndexedNode__lookup,
+                fold: IndexedNode__fold,
+                modify: IndexedNode__modify
+            });
         }),
         ArrayNode = (function(count, children) {
-            var self = this;
-            (self.count = count);
-            (self.children = children);
+            return ({
+                count: count,
+                children: children,
+                lookup: ArrayNode__lookup,
+                fold: ArrayNode__fold,
+                modify: ArrayNode__modify
+            });
         }),
         isEmpty = (function(x) {
             return (((!x) || (x === empty)) || (x && x.__hamt_isEmpty));
         }),
         isLeaf = (function(node) {
-            return (((node === empty) || (node instanceof Leaf)) || (node instanceof Collision));
+            return (((node === empty) || node.key) || node.hash);
         }),
         expand = (function(frag, child, bitmap, subNodes) {
             var bit = bitmap,
@@ -137,7 +155,7 @@ define(["require", "exports"], (function(require, exports) {
                 (bit = (bit >>> 1));
             }
             (arr[frag] = child);
-            return new(ArrayNode)((count + 1), arr);
+            return ArrayNode((count + 1), arr);
         }),
         pack = (function(removed, elements) {
             var children = [],
@@ -151,14 +169,14 @@ define(["require", "exports"], (function(require, exports) {
                     (bitmap = (bitmap | (1 << i)));
                 }
             }
-            return new(IndexedNode)(bitmap, children);
+            return IndexedNode(bitmap, children);
         }),
         mergeLeaves = (function(shift, n1, n2) {
             var h1 = n1.hash,
                 h2 = n2.hash,
                 subH1, subH2;
-            return ((h1 === h2) ? new(Collision)(h1, [n2, n1]) : ((subH1 = ((h1 >>> shift) & mask)), (subH2 =
-                ((h2 >>> shift) & mask)), new(IndexedNode)(((1 << subH1) | (1 << subH2)), ((subH1 ===
+            return ((h1 === h2) ? Collision(h1, [n2, n1]) : ((subH1 = ((h1 >>> shift) & mask)), (subH2 = ((
+                h2 >>> shift) & mask)), IndexedNode(((1 << subH1) | (1 << subH2)), ((subH1 ===
                 subH2) ? [mergeLeaves((shift + 5), n1, n2)] : ((subH1 < subH2) ? [n1, n2] : [
                 n2, n1
             ])))));
@@ -175,13 +193,13 @@ define(["require", "exports"], (function(require, exports) {
                 }
             }
             var v = (target ? f(target.value) : f());
-            return ((nothing === v) ? arraySpliceOut(i, list) : arrayUpdate(i, new(Leaf)(h, k, v), list));
+            return ((nothing === v) ? arraySpliceOut(i, list) : arrayUpdate(i, Leaf(h, k, v), list));
         });
-    (Leaf.prototype.lookup = (function(_, _0, k) {
+    (Leaf__lookup = (function(_, _0, k) {
         var self = this;
         return ((k === self.key) ? self.value : nothing);
     }));
-    (Collision.prototype.lookup = (function(_, h, k) {
+    (Collision__lookup = (function(_, h, k) {
         var self = this;
         if ((h === self.hash)) {
             for (var i = 0, len = self.children.length;
@@ -193,7 +211,7 @@ define(["require", "exports"], (function(require, exports) {
         }
         return nothing;
     }));
-    (IndexedNode.prototype.lookup = (function(shift, h, k) {
+    (IndexedNode__lookup = (function(shift, h, k) {
         var self = this,
             frag = ((h >>> shift) & mask),
             bit = (1 << frag),
@@ -201,7 +219,7 @@ define(["require", "exports"], (function(require, exports) {
         return ((self.mask & bit) ? self.children[((bitmap = self.mask), popcount((bitmap & (bit - 1))))]
             .lookup((shift + 5), h, k) : nothing);
     }));
-    (ArrayNode.prototype.lookup = (function(shift, h, k) {
+    (ArrayNode__lookup = (function(shift, h, k) {
         var self = this,
             frag = ((h >>> shift) & mask),
             child = self.children[frag];
@@ -210,20 +228,20 @@ define(["require", "exports"], (function(require, exports) {
     (empty.lookup = (function(_, _0, _1, _2) {
         return nothing;
     }));
-    (Leaf.prototype.modify = (function(shift, f, h, k) {
+    (Leaf__modify = (function(shift, f, h, k) {
         var v, v0, self = this;
-        return ((k === self.key) ? ((v = f(self.value)), ((nothing === v) ? empty : new(Leaf)(h, k, v))) :
-            ((v0 = f()), ((nothing === v0) ? self : mergeLeaves(shift, self, new(Leaf)(h, k, v0)))));
+        return ((k === self.key) ? ((v = f(self.value)), ((nothing === v) ? empty : Leaf(h, k, v))) : (
+            (v0 = f()), ((nothing === v0) ? self : mergeLeaves(shift, self, Leaf(h, k, v0)))));
     }));
-    (Collision.prototype.modify = (function(shift, f, h, k) {
+    (Collision__modify = (function(shift, f, h, k) {
         var list, v, self = this,
             hash0 = self["hash"],
             children = self["children"];
         return ((h === hash0) ? ((list = updateCollisionList(hash0, children, f, k)), ((list.length > 1) ?
-            new(Collision)(hash0, list) : list[0])) : ((v = f()), ((nothing === v) ? self :
-            mergeLeaves(shift, self, new(Leaf)(h, k, v)))));
+            Collision(hash0, list) : list[0])) : ((v = f()), ((nothing === v) ? self : mergeLeaves(
+            shift, self, Leaf(h, k, v)))));
     }));
-    (IndexedNode.prototype.modify = (function(shift, f, h, k) {
+    (IndexedNode__modify = (function(shift, f, h, k) {
         var __o = this,
             mask0 = __o["mask"],
             children = __o["children"],
@@ -238,12 +256,12 @@ define(["require", "exports"], (function(require, exports) {
             added = ((!exists) && (!(((!child) || (child === empty)) || (child && child.__hamt_isEmpty)))),
             bitmap0 = (removed ? (mask0 & (~bit)) : (added ? (mask0 | bit) : mask0));
         return ((!bitmap0) ? empty : (removed ? (((children.length <= 2) && isLeaf(children[(indx ^ 1)])) ?
-                children[(indx ^ 1)] : new(IndexedNode)(bitmap0, arraySpliceOut(indx, children))) :
-            (added ? ((children.length >= MAX_INDEX_NODE) ? expand(frag, child, mask0, children) :
-                new(IndexedNode)(bitmap0, arraySpliceIn(indx, child, children))) : new(
-                IndexedNode)(bitmap0, arrayUpdate(indx, child, children)))));
+            children[(indx ^ 1)] : IndexedNode(bitmap0, arraySpliceOut(indx, children))) : (
+            added ? ((children.length >= MAX_INDEX_NODE) ? expand(frag, child, mask0, children) :
+                IndexedNode(bitmap0, arraySpliceIn(indx, child, children))) : IndexedNode(
+                bitmap0, arrayUpdate(indx, child, children)))));
     }));
-    (ArrayNode.prototype.modify = (function(shift, f, h, k) {
+    (ArrayNode__modify = (function(shift, f, h, k) {
         var __o = this,
             count = __o["count"],
             children = __o["children"],
@@ -252,16 +270,16 @@ define(["require", "exports"], (function(require, exports) {
             newChild = (child || empty)
                 .modify((shift + 5), f, h, k);
         return (((((!child) || (child === empty)) || (child && child.__hamt_isEmpty)) && (!(((!newChild) ||
-            (newChild === empty)) || (newChild && newChild.__hamt_isEmpty)))) ? new(ArrayNode)((
-            count + 1), arrayUpdate(frag, newChild, children)) : (((!(((!child) || (child === empty)) ||
-                (child && child.__hamt_isEmpty))) && (((!newChild) || (newChild === empty)) ||
-                (newChild && newChild.__hamt_isEmpty))) ? (((count - 1) <= MIN_ARRAY_NODE) ? pack(
-                frag, children) : new(ArrayNode)((count - 1), arrayUpdate(frag, empty, children))) :
-            new(ArrayNode)(count, arrayUpdate(frag, newChild, children))));
+            (newChild === empty)) || (newChild && newChild.__hamt_isEmpty)))) ? ArrayNode((count +
+            1), arrayUpdate(frag, newChild, children)) : (((!(((!child) || (child === empty)) || (
+                child && child.__hamt_isEmpty))) && (((!newChild) || (newChild === empty)) || (
+                newChild && newChild.__hamt_isEmpty))) ? (((count - 1) <= MIN_ARRAY_NODE) ? pack(
+                frag, children) : ArrayNode((count - 1), arrayUpdate(frag, empty, children))) :
+            ArrayNode(count, arrayUpdate(frag, newChild, children))));
     }));
     (empty.modify = (function(_, f, h, k) {
         var v = f();
-        return ((nothing === v) ? empty : new(Leaf)(h, k, v));
+        return ((nothing === v) ? empty : Leaf(h, k, v));
     }));
     (tryGetHash = (function(alt, h, k, m) {
         var val = m.lookup(0, h, k);
@@ -320,16 +338,16 @@ define(["require", "exports"], (function(require, exports) {
     (remove = (function(k, m) {
         return removeHash(hash(k), k, m);
     }));
-    (Leaf.prototype.fold = (function(f, z) {
+    (Leaf__fold = (function(f, z) {
         var self = this;
         return f(z, self);
     }));
-    (Collision.prototype.fold = (function(f, z) {
+    (Collision__fold = (function(f, z) {
         var __o = this,
             children = __o["children"];
         return children.reduce(f, z);
     }));
-    (IndexedNode.prototype.fold = (function(f, z) {
+    (IndexedNode__fold = (function(f, z) {
         var __o = this,
             children = __o["children"],
             z1 = z;
@@ -341,7 +359,7 @@ define(["require", "exports"], (function(require, exports) {
         }
         return z1;
     }));
-    (ArrayNode.prototype.fold = (function(f, z) {
+    (ArrayNode__fold = (function(f, z) {
         var __o = this,
             children = __o["children"],
             z1 = z;

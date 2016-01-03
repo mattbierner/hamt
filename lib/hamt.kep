@@ -172,6 +172,12 @@ hash := \str -> {
  */
 empty := ({ __hamt_isEmpty: true });
 
+var Leaf__lookup, Collision__lookup, IndexedNode__lookup, ArrayNode__lookup;
+
+var Leaf__modify, Collision__modify, IndexedNode__modify, ArrayNode__modify;
+
+var Leaf__fold, Collision__fold, IndexedNode__fold, ArrayNode__fold;
+
 /**
  * Leaf holding a value.
  * 
@@ -179,10 +185,15 @@ empty := ({ __hamt_isEmpty: true });
  * @member key Key.
  * @member value Value stored.
  */
-var Leaf := function \hash key value =self-> {
-    self.hash = hash;
-    self.key = key;
-    self.value = value;
+var Leaf := function\hash key value -> {
+    return {
+        hash: hash,
+        key: key,
+        value: value,
+        lookup: Leaf__lookup,
+        fold: Leaf__fold,
+        modify: Leaf__modify
+    };
 };
 
 /**
@@ -191,9 +202,14 @@ var Leaf := function \hash key value =self-> {
  * @member hash Hash of key.
  * @member children Array of collision children node.
  */
-var Collision := function \hash children =self-> {
-    self.hash = hash;
-    self.children = children;
+var Collision := function\hash children -> {
+    return {
+        hash: hash,
+        children: children,
+        lookup: Collision__lookup,
+        fold: Collision__fold,
+        modify: Collision__modify
+    };
 };
 
 /**
@@ -204,9 +220,14 @@ var Collision := function \hash children =self-> {
  * @member mask Bitmap that encode the positions of children in the array.
  * @member children Array of child nodes.
  */
-var IndexedNode := function \mask children =self-> {
-    self.mask = mask;
-    self.children = children;
+var IndexedNode := function\mask children -> {
+    return {
+        mask: mask,
+        children: children,
+        lookup: IndexedNode__lookup,
+        fold: IndexedNode__fold,
+        modify: IndexedNode__modify
+    };
 };
 
 /**
@@ -215,9 +236,14 @@ var IndexedNode := function \mask children =self-> {
  * @member count Number of children.
  * @member children Array of child nodes.
  */
-var ArrayNode := function \count children =self-> {
-    self.count = count;
-    self.children = children;
+var ArrayNode := function\count children -> {
+    return {
+        count: count,
+        children: children,
+        lookup: ArrayNode__lookup,
+        fold: ArrayNode__fold,
+        modify: ArrayNode__modify
+    };
 };
 
 /* 
@@ -230,8 +256,8 @@ var isEmpty := \x ->
  */
 var isLeaf = \node ->
     (  node === empty
-    || node instanceof Leaf
-    || node instanceof Collision);
+    || node.key
+    || node.hash);
 
 /**
  * Expand an indexed node into an array node.
@@ -252,7 +278,7 @@ var expand = \frag child bitmap subNodes -> {
         bit = bit >>> 1;
     }
     arr.(frag) = child;
-    return new ArrayNode(count + 1, arr);
+    return ArrayNode(count + 1, arr);
 };
 
 /**
@@ -269,7 +295,7 @@ var pack = \removed elements -> {
             bitmap = bitmap | (1 << i);
         }
     }
-    return new IndexedNode(bitmap, children);
+    return IndexedNode(bitmap, children);
 };
 
 /**
@@ -284,12 +310,12 @@ var mergeLeaves = \shift n1 n2 -> let
     h2 = n2.hash
 in
     ?h1 === h2
-        :new Collision(h1, [n2, n1])
+        :Collision(h1, [n2, n1])
         :let
             subH1 = hashFragment(shift, h1),
             subH2 = hashFragment(shift, h2)
         in
-            new IndexedNode(toBitmap subH1 | toBitmap subH2,
+            IndexedNode(toBitmap subH1 | toBitmap subH2,
                 ?subH1 === subH2
                     :[mergeLeaves(shift + SIZE, n1, n2)]
                     :?subH1 < subH2 : [n1, n2] : [n2, n1]);
@@ -315,7 +341,7 @@ var updateCollisionList = \h list f k -> {
     return let v = ?target : f(target.value) : f() in
         ?isNothing v
             :arraySpliceOut(i, list)
-            :arrayUpdate(i, new Leaf(h, k, v), list);
+            :arrayUpdate(i, Leaf(h, k, v), list);
 };
 
 /* Lookups
@@ -323,7 +349,7 @@ var updateCollisionList = \h list f k -> {
 /**
  * Leaf::get
  */
-Leaf.prototype.lookup = \_ _ k =self->
+Leaf__lookup := \_ _ k =self->
     ?k === self.key
         :self.value
         :nothing;
@@ -331,7 +357,7 @@ Leaf.prototype.lookup = \_ _ k =self->
 /**
  * Collision::get
  */
-Collision.prototype.lookup = \_ h k =self-> {
+Collision__lookup := \_ h k =self-> {
     if (h === self.hash) {
         for (var i = 0, len = self.children.length; i < len; i = i + 1)
         with child = self.children.(i) in {
@@ -345,7 +371,7 @@ Collision.prototype.lookup = \_ h k =self-> {
 /**
  * IndexedNode::get
  */
-IndexedNode.prototype.lookup = \shift h k =self-> let
+IndexedNode__lookup := \shift h k =self-> let
     frag = hashFragment(shift, h),
     bit = toBitmap frag
 in
@@ -356,7 +382,7 @@ in
 /**
  * ArrayNode::get
  */
-ArrayNode.prototype.lookup = \shift h k =self-> let
+ArrayNode__lookup := \shift h k =self-> let
     frag = hashFragment(shift, h),
     child = self.children.(frag)
 in
@@ -370,35 +396,35 @@ empty.lookup := \_ _ _ _ ->
 /**
  * Leaf::modify
  */
-Leaf.prototype.modify := \shift f h k =self->
+Leaf__modify := \shift f h k =self->
     ?k === self.key
         :let v = f(self.value) in
             ?isNothing v
                 :empty
-                :new Leaf(h, k, v)
+                :Leaf(h, k, v)
     :let v = f() in
         ?isNothing v
             :self
-            :mergeLeaves(shift, self, new Leaf(h, k, v));
+            :mergeLeaves(shift, self, Leaf(h, k, v));
 
 /**
  * Collision::modify
  */
-Collision.prototype.modify = \shift f h k =self#{hash children}->
+Collision__modify = \shift f h k =self#{hash children}->
     ?h === hash
         :let list = updateCollisionList(hash, children, f, k) in
             ?list.length > 1
-                :new Collision(hash, list)
+                :Collision(hash, list)
                 :list.(0) // collapse single element collision list
     :let v = f() in
         ?isNothing v
             :self
-            :mergeLeaves(shift, self, new Leaf(h, k, v));
+            :mergeLeaves(shift, self, Leaf(h, k, v));
 
 /**
  * IndexedNode::modify
  */
-IndexedNode.prototype.modify = \shift f h k ={mask children}-> let
+IndexedNode__modify = \shift f h k ={mask children}-> let
     frag = hashFragment(shift, h),
     bit = toBitmap frag,
     indx = fromBitmap(mask, bit),
@@ -421,33 +447,33 @@ in
     :?removed
         :?children.length <= 2 && isLeaf children.(indx ^ 1)
             :children.(indx ^ 1) // collapse
-            :new IndexedNode(
+            :IndexedNode(
                 bitmap,
                 arraySpliceOut(indx, children))
             
     :?added
         :?children.length >= MAX_INDEX_NODE
             :expand(frag, child, mask, children)
-            :new IndexedNode(
+            :IndexedNode(
                 bitmap,
                 arraySpliceIn(indx, child, children))
     
     // Modify
-    :new IndexedNode(
+    :IndexedNode(
         bitmap,
         arrayUpdate(indx, child, children));
 
 /**
  * ArrayNode::modify
  */
-ArrayNode.prototype.modify = \shift f h k ={count children}-> let
+ArrayNode__modify = \shift f h k ={count children}-> let
     frag = hashFragment(shift, h),
     child = children.(frag),
     newChild = (child || empty).modify(shift + SIZE, f, h, k)
 in
     ?isEmpty child && !isEmpty newChild
         // add
-        :new ArrayNode(
+        :ArrayNode(
             count + 1,
             arrayUpdate(frag, newChild, children))
     
@@ -455,12 +481,12 @@ in
         // remove
         :?count - 1 <= MIN_ARRAY_NODE
             :pack(frag, children)
-            :new ArrayNode(
+            :ArrayNode(
                 count - 1,
                 arrayUpdate(frag, empty, children))
     
     // Modify
-    :new ArrayNode(
+    :ArrayNode(
         count,
         arrayUpdate(frag, newChild, children));
 
@@ -468,7 +494,7 @@ empty.modify := \_ f h k ->
     let v = f() in
         ?isNothing v
             :empty
-            :new Leaf(h, k, v);
+            :Leaf(h, k, v);
 
 /* Queries
  ******************************************************************************/
@@ -595,13 +621,13 @@ remove := \k m ->
 /**
  * Leaf::fold
  */
-Leaf.prototype.fold = \f z =self->
+Leaf__fold = \f z =self->
     f(z, self);
 
 /**
  * Collision::fold
  */
-Collision.prototype.fold = \f z ={children}->
+Collision__fold = \f z ={children}->
     children.reduce(f, z);
 
 /**
@@ -609,7 +635,7 @@ Collision.prototype.fold = \f z ={children}->
  * 
  * `self.children.reduce(fold@f, z)`
  */
-IndexedNode.prototype.fold := \f z ={children}-> {
+IndexedNode__fold := \f z ={children}-> {
     var z1 = z;
     for (var i = 0, len = children.length; i < len; i = i + 1)
     with c = children.(i) in {
@@ -625,7 +651,7 @@ IndexedNode.prototype.fold := \f z ={children}-> {
  * 
  * `self.children.reduce(fold@f, z)`
  */
-ArrayNode.prototype.fold := \f z ={children}-> {
+ArrayNode__fold := \f z ={children}-> {
     var z1 = z;
     for (var i = 0, len = children.length; i < len; i = i + 1)
     with c = children.(i) in {
