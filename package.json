@@ -16,17 +16,17 @@
         "url": "https://github.com/mattbierner/hamt.git"
     },
     
-    "main": "dist_node/hamt.js",
-    "directories": {
-        "lib": "dist_node"
-    },
+    "main": "hamt.js",
     "files": [
-        "dist_node/",
-        "lib",
-        "index.js"
+    	"hamt.js",
+	"hamt.js.map"
     ],
     "dependencies": {},
     "devDependencies": {
+        "gulp": "^3.9.0",
+        "gulp-babel": "^6.1.0",
+        "gulp-plumber": "^1.0.0",
+        "gulp-sourcemaps": "^1.6.0",
         "chai": "*",
         "mocha": "*"
     },

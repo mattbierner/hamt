@@ -1,5 +1,5 @@
 "use strict";
-const hamt = require('../dist_node/hamt');
+const hamt = require('../hamt');
 const assert = require('chai').assert;
 
 describe('keys', () => {
