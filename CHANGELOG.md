@@ -1,5 +1,8 @@
 # ChangeLog #
 
+## 1.1.1 - January 3, 2016
+* Perf improvements.
+
 ## 1.1.0 - January 3, 2016
 * Restored `*hash` variants of functions that take a custom hash and key.
 * Added `isEmpty` to check is a map contains any elements.
