@@ -48,19 +48,19 @@ describe('modify', () => {
 
     it('should modify collision values correctly', () => {
         const h1 = hamt.empty
-            ._modify(0, () => 3, 0, 'a')
-            ._modify(0, () => 5, 0, 'b');
+            .modifyHash(0, 'a', () => 3)
+            .modifyHash(0, 'b', () => 5);
     
-        const h3 = h1._modify(0, x => x * 2, 0, 'a');
+        const h3 = h1.modifyHash(0, 'a', x => x * 2);
         assert.strictEqual(6, h3.getHash(0, 'a'));
         assert.strictEqual(5, h3.getHash(0, 'b'));
     
-        const h4 = h3._modify(0, x => x * 2, 0, 'b');
+        const h4 = h3.modifyHash(0, 'b', x => x * 2);
         assert.strictEqual(6, h4.getHash(0, 'a'));
         assert.strictEqual(10, h4.getHash(0, 'b'));
     
         // Non existant
-        const h5 = h4._modify(0, _ => 100, 0, 'c');
+        const h5 = h4.modifyHash(0, 'c', _ => 100);
         assert.strictEqual(6, h5.getHash(0, 'a'));
         assert.strictEqual(10, h5.getHash(0, 'b'));
         assert.strictEqual(100, h5.getHash(0, 'c'));

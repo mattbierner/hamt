@@ -29,14 +29,6 @@ var MIN_ARRAY_NODE = BUCKET_SIZE / 4;
  ******************************************************************************/
 var nothing = {};
 
-var isNothing = function isNothing(x) {
-    return x === nothing;
-};
-
-var maybe = function maybe(val, def) {
-    return isNothing(val) ? def : val;
-};
-
 /* Bit Ops
  ******************************************************************************/
 /**
@@ -143,13 +135,19 @@ var hash = hamt.hash = function (str) {
 
 /* Node Structures
  ******************************************************************************/
-var Node = function Node() {};
+function Map(root) {
+    this.root = root;
+};
+
+var LEAF = 1;
+var COLLISION = 2;
+var INDEX = 3;
+var ARRAY = 4;
 
 /**
 	Empty node.
 */
-var empty = hamt.empty = new Node();
-empty.__hamt_isEmpty = true;
+var empty = { __hamt_isEmpty: true };
 
 var isEmptyNode = function isEmptyNode(x) {
     return x === empty || x && x.__hamt_isEmpty;
@@ -162,12 +160,12 @@ var isEmptyNode = function isEmptyNode(x) {
 	@member key Key.
 	@member value Value stored.
 */
-var Leaf = function Leaf(hash, key, value) {
+function Leaf(hash, key, value) {
+    this.type = LEAF;
     this.hash = hash;
     this.key = key;
     this.value = value;
 };
-Leaf.prototype = new Node();
 
 /**
 	Leaf holding multiple values with the same hash but different keys.
@@ -175,11 +173,11 @@ Leaf.prototype = new Node();
 	@member hash Hash of key.
 	@member children Array of collision children node.
 */
-var Collision = function Collision(hash, children) {
+function Collision(hash, children) {
+    this.type = COLLISION;
     this.hash = hash;
     this.children = children;
 };
-Collision.prototype = new Node();
 
 /**
 	Internal node with a sparse set of children.
@@ -189,11 +187,11 @@ Collision.prototype = new Node();
 	@member mask Bitmap that encode the positions of children in the array.
 	@member children Array of child nodes.
 */
-var IndexedNode = function IndexedNode(mask, children) {
+function IndexedNode(mask, children) {
+    this.type = INDEX;
     this.mask = mask;
     this.children = children;
 };
-IndexedNode.prototype = new Node();
 
 /**
 	Internal node with many children.
@@ -201,17 +199,17 @@ IndexedNode.prototype = new Node();
 	@member size Number of children.
 	@member children Array of child nodes.
 */
-var ArrayNode = function ArrayNode(size, children) {
+function ArrayNode(size, children) {
+    this.type = ARRAY;
     this.size = size;
     this.children = children;
 };
-ArrayNode.prototype = new Node();
 
 /**
 	Is `node` a leaf node?
 */
 var isLeaf = function isLeaf(node) {
-    return node === empty || node instanceof Leaf || node instanceof Collision;
+    return node === empty || node.type === LEAF || node.type === COLLISION;
 };
 
 /* Internal node operations.
@@ -291,40 +289,56 @@ var updateCollisionList = function updateCollisionList(h, list, f, k) {
     }
 
     var v = target ? f(target.value) : f();
-    return isNothing(v) ? arraySpliceOut(i, list) : arrayUpdate(i, new Leaf(h, k, v), list);
+    return v === nothing ? arraySpliceOut(i, list) : arrayUpdate(i, new Leaf(h, k, v), list);
 };
 
 /* Lookups
  ******************************************************************************/
-Leaf.prototype._lookup = function (_, h, k) {
-    return k === this.key ? this.value : nothing;
-};
-
-Collision.prototype._lookup = function (_, h, k) {
-    if (h === this.hash) {
-        var children = this.children;
-        for (var i = 0, len = children.length; i < len; ++i) {
-            var child = children[i];
-            if (k === child.key) return child.value;
+var _lookup = function _lookup(node, h, k) {
+    var shift = 0;
+    while (true) {
+        switch (node.type) {
+            case LEAF:
+                {
+                    return k === node.key ? node.value : nothing;
+                }
+            case COLLISION:
+                {
+                    if (h === node.hash) {
+                        var children = node.children;
+                        for (var i = 0, len = children.length; i < len; ++i) {
+                            var child = children[i];
+                            if (k === child.key) return child.value;
+                        }
+                    }
+                    return nothing;
+                }
+            case INDEX:
+                {
+                    var frag = hashFragment(shift, h);
+                    var bit = toBitmap(frag);
+                    if (node.mask & bit) {
+                        node = node.children[fromBitmap(node.mask, bit)];
+                        shift += SIZE;
+                        break;
+                    } else {
+                        return nothing;
+                    }
+                }
+            case ARRAY:
+                {
+                    node = node.children[hashFragment(shift, h)];
+                    if (node) {
+                        shift += SIZE;
+                        break;
+                    } else {
+                        return nothing;
+                    }
+                }
+            default:
+                return nothing;
         }
     }
-    return nothing;
-};
-
-IndexedNode.prototype._lookup = function (shift, h, k) {
-    var frag = hashFragment(shift, h);
-    var bit = toBitmap(frag);
-    return this.mask & bit ? this.children[fromBitmap(this.mask, bit)]._lookup(shift + SIZE, h, k) : nothing;
-};
-
-ArrayNode.prototype._lookup = function (shift, h, k) {
-    var frag = hashFragment(shift, h);
-    var child = this.children[frag];
-    return child ? child._lookup(shift + SIZE, h, k) : nothing;
-};
-
-empty._lookup = function () {
-    return nothing;
 };
 
 /* Editing
@@ -332,10 +346,10 @@ empty._lookup = function () {
 Leaf.prototype._modify = function (shift, f, h, k) {
     if (k === this.key) {
         var _v = f(this.value);
-        return isNothing(_v) ? empty : new Leaf(h, k, _v);
+        return _v === nothing ? empty : new Leaf(h, k, _v);
     }
     var v = f();
-    return isNothing(v) ? this : mergeLeaves(shift, this.hash, this, h, new Leaf(h, k, v));
+    return v === nothing ? this : mergeLeaves(shift, this.hash, this, h, new Leaf(h, k, v));
 };
 
 Collision.prototype._modify = function (shift, f, h, k) {
@@ -344,7 +358,7 @@ Collision.prototype._modify = function (shift, f, h, k) {
         return list.length > 1 ? new Collision(this.hash, list) : list[0]; // collapse single element collision list
     }
     var v = f();
-    return isNothing(v) ? this : mergeLeaves(shift, this.hash, this, h, new Leaf(h, k, v));
+    return v === nothing ? this : mergeLeaves(shift, this.hash, this, h, new Leaf(h, k, v));
 };
 
 IndexedNode.prototype._modify = function (shift, f, h, k) {
@@ -395,7 +409,7 @@ ArrayNode.prototype._modify = function (shift, f, h, k) {
 
 empty._modify = function (_, f, h, k) {
     var v = f();
-    return isNothing(v) ? empty : new Leaf(h, k, v);
+    return v === nothing ? empty : new Leaf(h, k, v);
 };
 
 /* Queries
@@ -406,10 +420,11 @@ empty._modify = function (_, f, h, k) {
     Returns the value or `alt` if none.
 */
 var tryGetHash = hamt.tryGetHash = function (alt, hash, key, map) {
-    return maybe(map._lookup(0, hash, key), alt);
+    var v = _lookup(map.root, hash, key);
+    return v === nothing ? alt : v;
 };
 
-Node.prototype.tryGetHash = function (hash, key, alt) {
+Map.prototype.tryGetHash = function (hash, key, alt) {
     return tryGetHash(alt, hash, key, this);
 };
 
@@ -422,7 +437,7 @@ var tryGet = hamt.tryGet = function (alt, key, map) {
     return tryGetHash(alt, hash(key), key, map);
 };
 
-Node.prototype.tryGet = function (key, alt) {
+Map.prototype.tryGet = function (key, alt) {
     return tryGet(alt, key, this);
 };
 
@@ -435,7 +450,7 @@ var getHash = hamt.getHash = function (hash, key, map) {
     return tryGetHash(undefined, hash, key, map);
 };
 
-Node.prototype.getHash = function (hash, key, alt) {
+Map.prototype.getHash = function (hash, key, alt) {
     return getHash(hash, key, this);
 };
 
@@ -448,7 +463,7 @@ var get = hamt.get = function (key, map) {
     return tryGet(undefined, key, map);
 };
 
-Node.prototype.get = function (key, alt) {
+Map.prototype.get = function (key, alt) {
     return tryGet(alt, key, this);
 };
 
@@ -456,10 +471,10 @@ Node.prototype.get = function (key, alt) {
     Does an entry exist for `key` in `map`? Uses custom `hash`.
 */
 var hasHash = hamt.has = function (hash, key, map) {
-    return !isNothing(tryGetHash(nothing, hash, key, map));
+    return tryGetHash(nothing, hash, key, map) !== nothing;
 };
 
-Node.prototype.hasHash = function (hash, key) {
+Map.prototype.hasHash = function (hash, key) {
     return hasHash(hash, key, this);
 };
 
@@ -470,18 +485,23 @@ var has = hamt.has = function (key, map) {
     return hasHash(hash(key), key, map);
 };
 
-Node.prototype.has = function (key) {
+Map.prototype.has = function (key) {
     return has(key, this);
 };
+
+/**
+    Empty node.
+*/
+hamt.empty = new Map(empty);
 
 /**
     Does `map` contain any elements?
 */
 var isEmpty = hamt.isEmpty = function (map) {
-    return !!isEmptyNode(map);
+    return !!isEmptyNode(map.root);
 };
 
-Node.prototype.isEmpty = function () {
+Map.prototype.isEmpty = function () {
     return isEmpty(this);
 };
 
@@ -498,10 +518,10 @@ Node.prototype.isEmpty = function () {
     Returns a map with the modified value. Does not alter `map`.
 */
 var modifyHash = hamt.modifyHash = function (f, hash, key, map) {
-    return map._modify(0, f, hash, key);
+    return new Map(map.root._modify(0, f, hash, key));
 };
 
-Node.prototype.modifyHash = function (hash, key, f) {
+Map.prototype.modifyHash = function (hash, key, f) {
     return modifyHash(f, hash, key, this);
 };
 
@@ -515,7 +535,7 @@ var modify = hamt.modify = function (f, key, map) {
     return modifyHash(f, hash(key), key, map);
 };
 
-Node.prototype.modify = function (key, f) {
+Map.prototype.modify = function (key, f) {
     return modify(f, key, this);
 };
 
@@ -528,7 +548,7 @@ var setHash = hamt.setHash = function (value, hash, key, map) {
     return modifyHash(constant(value), hash, key, map);
 };
 
-Node.prototype.setHash = function (hash, key, value) {
+Map.prototype.setHash = function (hash, key, value) {
     return setHash(value, hash, key, this);
 };
 
@@ -541,7 +561,7 @@ var set = hamt.set = function (value, key, map) {
     return setHash(value, hash(key), key, map);
 };
 
-Node.prototype.set = function (key, value) {
+Map.prototype.set = function (key, value) {
     return set(value, key, this);
 };
 
@@ -555,7 +575,7 @@ var removeHash = hamt.removeHash = function (hash, key, map) {
     return modifyHash(del, hash, key, map);
 };
 
-Node.prototype.removeHash = Node.prototype.deleteHash = function (hash, key) {
+Map.prototype.removeHash = Map.prototype.deleteHash = function (hash, key) {
     return removeHash(hash, key, this);
 };
 
@@ -568,36 +588,36 @@ var remove = hamt.remove = function (key, map) {
     return removeHash(hash(key), key, map);
 };
 
-Node.prototype.remove = Node.prototype.delete = function (key) {
+Map.prototype.remove = Map.prototype.delete = function (key) {
     return remove(key, this);
 };
 
 /* Fold
  ******************************************************************************/
-Leaf.prototype.fold = function (f, z) {
+Leaf.prototype._fold = function (f, z) {
     return f(z, this.value, this.key);
 };
 
-Collision.prototype.fold = function (f, z) {
+Collision.prototype._fold = function (f, z) {
     return this.children.reduce(function (p, c) {
         return f(p, c.value, c.key);
     }, z);
 };
 
-IndexedNode.prototype.fold = function (f, z) {
+IndexedNode.prototype._fold = function (f, z) {
     var children = this.children;
     for (var i = 0, len = children.length; i < len; ++i) {
         var c = children[i];
-        z = c instanceof Leaf ? f(z, c.value, c.key) : c.fold(f, z);
+        z = c instanceof Leaf ? f(z, c.value, c.key) : c._fold(f, z);
     }
     return z;
 };
 
-ArrayNode.prototype.fold = function (f, z) {
+ArrayNode.prototype._fold = function (f, z) {
     var children = this.children;
     for (var i = 0, len = children.length; i < len; ++i) {
         var c = children[i];
-        if (c) z = c instanceof Leaf ? f(z, c.value, c.key) : c.fold(f, z);
+        if (c && c._fold) z = c instanceof Leaf ? f(z, c.value, c.key) : c._fold(f, z);
     }
     return z;
 };
@@ -612,10 +632,10 @@ ArrayNode.prototype.fold = function (f, z) {
     @param m HAMT
 */
 var fold = hamt.fold = function (f, z, m) {
-    return isEmptyNode(m) ? z : m.fold(f, z);
+    return isEmptyNode(m.root) ? z : m.root._fold(f, z);
 };
 
-Node.prototype.fold = function (f, z) {
+Map.prototype.fold = function (f, z) {
     return fold(f, z, this);
 };
 
@@ -631,7 +651,7 @@ var count = hamt.count = function (map) {
     return fold(inc, 0, map);
 };
 
-Node.prototype.count = function () {
+Map.prototype.count = function () {
     return count(this);
 };
 
@@ -647,7 +667,7 @@ var pairs = hamt.pairs = function (map) {
     return fold(buildPairs, [], m);
 };
 
-Node.prototype.pairs = function () {
+Map.prototype.pairs = function () {
     return count(this);
 };
 
@@ -663,7 +683,7 @@ var keys = hamt.keys = function (m) {
     return fold(buildKeys, [], m);
 };
 
-Node.prototype.keys = function () {
+Map.prototype.keys = function () {
     return keys(this);
 };
 
@@ -679,7 +699,7 @@ var values = hamt.values = function (m) {
     return fold(buildValues, [], m);
 };
 
-Node.prototype.values = function () {
+Map.prototype.values = function () {
     return values(this);
 };
 
