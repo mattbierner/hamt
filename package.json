@@ -23,13 +23,12 @@
     "files": [
         "dist_node/",
         "lib",
-        "test",
-	"test.js",
         "index.js"
     ],
     "dependencies": {},
     "devDependencies": {
-        "mocha": "^2.3.0"
+        "chai": "*",
+        "mocha": "*"
     },
     
     "scripts": {

@@ -1,20 +1,20 @@
 "use strict";
 const hamt = require('../dist_node/hamt');
-const assert = require('assert');
+const assert = require('chai').assert;
 
 describe('count', () => {
     it('should return zero for empty map', () => {
-        assert.equal(0, hamt.count(hamt.empty));
+        assert.strictEqual(0, hamt.count(hamt.empty));
     });
     
     it('should return 1 for single element map', () => {
-        assert.equal(1, hamt.count(hamt.set('a', 5, hamt.empty)));
-        assert.equal(1, hamt.count(hamt.set('b', 5, hamt.empty)));
+        assert.strictEqual(1, hamt.count(hamt.set('a', 5, hamt.empty)));
+        assert.strictEqual(1, hamt.count(hamt.set('b', 5, hamt.empty)));
     });
     
     it('should handle counts on collisions correctly', () => {
         const h1 = hamt.setHash(0, 'b', 5, hamt.setHash(0, 'a', 3, hamt.empty));
-        assert.equal(2, hamt.count(h1));
+        assert.strictEqual(2, hamt.count(h1));
     });
     
     it('return correct counts while items are added and removed', () => {
@@ -37,12 +37,12 @@ describe('count', () => {
             for (let i = 0; i < insert.length; ++i) {
                 const x = insert[i];
                 h = hamt.set(x, x, h);
-                assert.equal(i + 1, hamt.count(h));
+                assert.strictEqual(i + 1, hamt.count(h));
             }
     
             for (let i = 0; i < remove.length; ++i) {
                 h = hamt.remove(remove[i], h);
-                assert.equal(remove.length - i - 1, hamt.count(h));
+                assert.strictEqual(remove.length - i - 1, hamt.count(h));
             }
     });
 });
