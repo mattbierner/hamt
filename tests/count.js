@@ -1,25 +1,32 @@
 var hamt = require('../dist_node/hamt');
+const assert = require('assert');
 
-exports.empty = function(test) {
-    test.equal(hamt.count(hamt.empty), 0);
+describe('count', () => {
+    it('should return zero for empty map', () => {
+        assert.equal(0, hamt.count(hamt.empty));
+    });
+    
+    it('should return 1 for single element map', () => {
+        assert.equal(1, hamt.count(hamt.set('a', 5, hamt.empty)));
+        assert.equal(1, hamt.count(hamt.set('b', 5, hamt.empty)));
+    });
+});
 
-    test.done();
-};
 
 exports.simple_count = function(test) {
     var h1 = hamt.set('b', 5, hamt.set('a', 3, hamt.empty));
     
-    test.equal(hamt.count(h1), 2);
+    assert.equal(hamt.count(h1), 2);
 
-    test.done();
+    assert.done();
 };
 
 exports.collision = function(test) {
     var h1 = hamt.setHash(0, 'b', 5, hamt.setHash(0, 'a', 3, hamt.empty));
     
-    test.equal(hamt.count(h1), 2);
+    assert.equal(hamt.count(h1), 2);
     
-    test.done();
+    assert.done();
 };
 
 exports.many = function(test) {
@@ -40,16 +47,16 @@ exports.many = function(test) {
     for (var i = 0; i < insert.length; ++i) {
         var x = insert[i];
         h = hamt.set(x, x, h);
-        test.equal(
+        assert.equal(
             hamt.count(h),
             i + 1);
     }
     
     for (var i = 0; i < remove.length; ++i) {
         h = hamt.remove(remove[i], h);
-        test.equal(
+        assert.equal(
             hamt.count(h),
             remove.length - i - 1);
     }
-    test.done();
+    assert.done();
 };

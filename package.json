@@ -29,10 +29,10 @@
     ],
     "dependencies": {},
     "devDependencies": {
-        "nodeunit": "0.8.x"
+        "mocha": "^2.3.0"
     },
     
     "scripts": {
-        "test": "node test.js"
+        "test": "mocha tests"
     }
 }
