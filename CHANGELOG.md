@@ -1,5 +1,19 @@
 # ChangeLog #
 
+## 1.0.0 - January 3, 2016
+* Rewrite in ES6.
+* Combined node and amd packages.
+** Both now live in the top level `hamt.js` and are generated from `lib/hamt.js`.
+* Added chaining interface.
+** `hamt.empty.set('a', 1).set('b', 3)...`
+* `hamt.get` returns undefined instead of `null` if lookup fails.
+* Switched argument order on `hamt.modify` and `hamt.set` to better support binding.
+** Chain versions of these method have old argument order.
+* Removed `*Hash` functions since these expose too many implementation details and can easily produce undesirable behavior if not used carefully. 
+* Changed `fold` to call `f` with `(accumulated, value, key)` instead of `(accumulated, {value, key})`.
+* Aliased `map.delete` to `map.remove`.
+* Performance improvements and internal cleanup.
+
 ## 0.1.9 - January 2, 2016
 * Inline array update operations for better performances as suggested by @MichaelOstermann.
 

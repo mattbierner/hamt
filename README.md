@@ -15,101 +15,238 @@ for most operations however.
 
 
 ## Install
+Source code is in `hamt.js` and generated from `lib/hamt.js`. The library supports node, AMD, and use as a global.
 
 ### Node
-Node source is in `dist_node/hamt.js`
-
-``` javascript
+``` sh
 $ npm install hamt
 ```
 
 ``` javascript
 var hamt = require('hamt');
 
-var h = hamt.empty;
-
-h = hamt.set('key', 'value', h);
+var h = hamt.empty.set('key', 'value', h);
 
 ...
 ```
 
 
-### Amd
-Amd source is in `dist/hamt.js`
-
+### AMD
 ``` javascript
 requirejs.config({
     paths: {
-        'hamt': 'dist/hamt'
+        'hamt': 'hamt'
     }
 });
 
-require([
-    'hamt'],
-function(hamt) {
+require(['hamt'], function(hamt) {
+    var h = hamt.empty.set('key', 'value', h);
     ...
 });
 ```
 
 
-## Usage
+## API
+Hamt provides a method chaining interface and a set of free functions to update and query map data structure. Both APIs provide identical functionality, byt the free functions use an argument order designed for binding and composition, while the method chaining api is more legible and more Javascripty.
+
+The map is persistent, so operations always return a modified copy of the map instead of alterting the original.
+
+#### `hamt.empty`
+An empty map.
+
+#### `hamt.get(key, map)`
+#### `map.get(key, [alt])`
+Lookup the value for `key` in `map`. 
+
+* `key` - String key.
+* `map` - Hamt map.
 
 ``` javascript
-var hamt = require('hamt');
+var h = hamt.empty.set('key', 'value');
 
-// empty table
-var h = hamt.empty;
+h.get('key') === 'value'
+hamt.get('key', k) === 'value'
 
-// Set 'key' to 'value'
-h = hamt.set('key', 'value', h);
+h.get('no such key') === undefined
+```
 
-// get 'key'
-hamt.get('key', h); // 'value'
+#### `hamt.tryGet(alt, key, map)`
+#### `map.tryGet(key, alt)`
+Same as `get` but returns `alt` if no value for `key` exists.
+
+* `alt` - Value returned if no such key exists in the map.
+* `key` - String key.
+* `map` - Hamt map.
+
+#### `hamt.has(key, map)`
+#### `map.has(key)`
+Does an entry for `key` exist in `map`?
+
+* `key` - String key.
+* `map` - Hamt map.
+
+``` javascript
+var h = hamt.empty.set('key', 'value');
+
+h.has('key') === true
+h.has('no such key') === false
+```
+
+#### `hamt.set(value, key, map)`
+#### `map.set(key, value)`
+Set the value for `key` in `map`. 
+
+* `value` - Value to store. Hamt supports all value types, including: literals, objects, falsy values, null, and undefined. Keep in mind that only the map data structure itself is guaranteed to be immutable. Using immutable values is recommended but not required.
+* `key` - String key.
+* `map` - Hamt map.
+
+Returns a new map with the value set. Does not alter the original.
+
+``` javascript
+var h = hamt.empty
+    .set('key', 'value');
+    .set('key2', 'value2');
+
+var h2 = h.set('key3', 'value3');
+
+h2.get('key') === 'value'
+h2.get('key2') === 'value2'
+h2.get('key3') === 'value3'
+
+// original `h` was not modified
+h.get('key') === 'value'
+h.get('key2') === 'value2'
+h.get('key3') === undefined
+```
+
+#### `hamt.modify(f, key, map)`
+#### `map.modify(key, f)`
+Update the value stored for `key` in `map`. 
+
+* `f` - Function mapping the current value to the new value. If no current value exists, the function is invoked with no arguments. 
+* `key` - String key.
+* `map` - Hamt map.
+
+Returns a new map with the modified value. Does not alter the original.
+
+``` javascript
+var h = hamt.empty
+    .set('i', 2);
+    
+var h2 = h.modify('i', x => x * x);
+
+h2.get('i') === 4
+h.get('i') === 2
+h2.count() === 1
+h.count() === 1
+
+// Operate on value that does not exist
+var h3 = h.modify('new', x => {
+    if (x === undefined) {
+        return 10;
+    }
+    return -x;
+});
+
+h3.get('new') === 10
+h3.count() === 2
+```
+
+#### `hamt.remove(key, map)`
+#### `map.remove(key)`
+#### `map.delete(key)`
+Remove `key` from `map`. 
+
+* `key` - String key.
+* `map` - Hamt map.
+
+Returns a new map with the value removed. Does not alter the original.
+
+``` javascript
+var h = hamt.empty
+    .set('a', 1)
+    .set('b', 2)
+    .set('c', 3);
+    
+var h2 = h.remove('b');
+
+h2.count() === 2;
+h2.get('a') === 1
+h2.get('b') === undefined
+h2.get('c') === 3
+```
+
+#### `hamt.count(map)`
+#### `map.count()`
+Get number of elements in `map`.
+
+* `map` - Hamt map.
 
 
-// The data structure is persistent so the original is not modified.
-var h1 = hamt.set('a', 'x', hamt.empty);
-var h2 = hamt.set('b', 'y', h1);
+``` javascript
+hamt.empty.count() === 0;
+hamt.empty.set('a', 3).count() === 1;
+hamt.empty.set('a', 3).set('b', 3).count() === 2;
+```
 
-hamt.get('a', h1); // 'x'
-hamt.get('b', h1); // null
-hamt.get('a', h2); // 'x'
-hamt.get('b', h2); // 'y'
+#### `hamt.fold(f, z, map)`
+#### `map.fold(f, z)`
+Fold over the map, accumulating result value.
 
+* `f` - Function invoked with accumulated value, current value, and current key.
+* `z` - Initial value.
+* `map` - Hamt map.
 
-// modify an entry
-h2 = hamt.modify('b', function(x) { return x + 'z'; }, h2);
-hamt.get('b', h2); // 'yz'
+Order is not guaranteed.
 
-// remove an entry
-h2 = hamt.remove('b', h2);
-hamt.get('a', h2); // 'x'
-hamt.get('b', h2); // null
+``` javascript
+var max = hamt.fold.bind(null, (acc, value, key) =>
+    Math.max(acc, value),
+    0);
 
+max(hamt.empty.set('key', 3).set('key', 4)) === 4;
+```
 
-// Custom hash Function
-// The main Hamt API expects all keys to be strings. Versions of all API functions
-// that take a `hash` parameter are also provided so custom hashes and keys can be used.
+#### `hamt.pairs(map)`
+#### `map.pairs()`
+Get an array of key value pairs in `map`.
 
-// Collisions are correctly handled
-var h1 = hamt.setHash(0, 'a', 'x', hamt.empty);
-var h2 = hamt.setHash(0, 'b', 'y', h1);
+* `map` - Hamt map.
 
-hamt.get('a', h2); // 'x'
-hamt.get('b', h2); // 'y'
+Order is not guaranteed.
 
-// Aggregate Info
-var h = hamt.set('b', 'y', hamt.set('a', 'x', hamt.empty));
+``` javascript
+hamt.empty.pairs() === [];
+hamt.empty.set('a', 3).pairs() === [['a', 3]];
+hamt.empty.set('a', 3).set('b', 3).pairs() === [['a', 3], ['b', 3]];
+```
 
-hamt.count(h); // 2
-hamt.keys(h); // ['b', 'a'];
-hamt.values(h); // ['y', 'x'];
-hamt.pairs(h); // [['b', 'y'], ['a', 'x']];
+#### `hamt.key(map)`
+#### `map.keys()`
+Get an array of all keys in `map`.
 
-// Fold
-var h = hamt.set('a', 10, hamt.set('b', 4, hamt.set('c', -2, hamt.empty)));
+* `map` - Hamt map.
 
-hamt.fold(\p {value} -> p + value, h); // 12
+Order is not guaranteed.
+
+``` javascript
+hamt.empty.keys() === [];
+hamt.empty.set('a', 3).keys() === ['a'];
+hamt.empty.set('a', 3).set('b', 3).keys() === ['a', 'b'];
+```
+
+#### `hamt.values(map)`
+#### `map.values()`
+Get an array of all values in `map`.
+
+* `map` - Hamt map.
+
+Order is not guaranteed. Duplicate entries may exist.
+
+``` javascript
+hamt.empty.values() === [];
+hamt.empty.set('a', 3).values() === [3];
+hamt.empty.set('a', 3).values('b', 3).values() === [3, 3];
 ```
 
 

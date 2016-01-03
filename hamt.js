@@ -491,25 +491,27 @@ var remove = hamt.remove = function (key, map) {
     return modify(del, key, map);
 };
 
-Node.prototype.remove = function (key) {
+Node.prototype.remove = Node.prototype.delete = function (key) {
     return remove(key, this);
 };
 
 /* Fold
  ******************************************************************************/
 Leaf.prototype.fold = function (f, z) {
-    return f(z, this);
+    return f(z, this.value, this.key);
 };
 
 Collision.prototype.fold = function (f, z) {
-    return this.children.reduce(f, z);
+    return this.children.reduce(function (p, c) {
+        return f(p, c.value, c.key);
+    }, z);
 };
 
 IndexedNode.prototype.fold = function (f, z) {
     var children = this.children;
     for (var i = 0, len = children.length; i < len; ++i) {
         var c = children[i];
-        z = c instanceof Leaf ? f(z, c) : c.fold(f, z);
+        z = c instanceof Leaf ? f(z, c.value, c.key) : c.fold(f, z);
     }
     return z;
 };
@@ -518,7 +520,7 @@ ArrayNode.prototype.fold = function (f, z) {
     var children = this.children;
     for (var i = 0, len = children.length; i < len; ++i) {
         var c = children[i];
-        if (!isEmpty(c)) z = c instanceof Leaf ? f(z, c) : c.fold(f, z);
+        if (!isEmpty(c)) z = c instanceof Leaf ? f(z, c.value, c.key) : c.fold(f, z);
     }
     return z;
 };
@@ -561,8 +563,8 @@ Node.prototype.count = function () {
  
     Order is not guaranteed.
 */
-var buildPairs = function buildPairs(p, x) {
-    p.push(x);return p;
+var buildPairs = function buildPairs(p, value, key) {
+    p.push([key, value]);return p;
 };
 var pairs = hamt.pairs = function (map) {
     return fold(buildPairs, [], m);
@@ -577,8 +579,8 @@ Node.prototype.pairs = function () {
 
     Order is not guaranteed.
 */
-var buildKeys = function buildKeys(p, x) {
-    p.push(x.key);return p;
+var buildKeys = function buildKeys(p, _, key) {
+    p.push(key);return p;
 };
 var keys = hamt.keys = function (m) {
     return fold(buildKeys, [], m);
@@ -593,8 +595,8 @@ Node.prototype.keys = function () {
 
     Order is not guaranteed, duplicates are preserved.
 */
-var buildValues = function buildValues(p, x) {
-    p.push(x.value);return p;
+var buildValues = function buildValues(p, value) {
+    p.push(value);return p;
 };
 var values = hamt.values = function (m) {
     return fold(buildValues, [], m);

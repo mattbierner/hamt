@@ -1,10 +1,11 @@
 {
     "name": "hamt",
-    "version": "0.1.9",
+    "version": "1.0.0",
     "description": "Hash Array Mapped Trie",
     "keywords": [
         "trie",
-	"map",
+	    "map",
+	    "immutable",
         "persistent",
         "data structure",
         "hash"
@@ -19,7 +20,7 @@
     "main": "hamt.js",
     "files": [
     	"hamt.js",
-	"hamt.js.map"
+	    "hamt.js.map"
     ],
     "dependencies": {},
     "devDependencies": {
