@@ -5,11 +5,25 @@
 define(["require", "exports"], (function(require, exports) {
     "use strict";
     var hash, empty, tryGetHash, tryGet, getHash, get, hasHash, has, setHash, set, modifyHash, modify,
-            removeHash, remove, fold, count, pairs, keys, values, BUCKET_SIZE = Math.pow(2, 5),
+            removeHash, remove, fold, count, pairs, keys, values, __lnot = (function(x) {
+                return (!x);
+            }),
+        constant = (function(x) {
+            return (function() {
+                return x;
+            });
+        }),
+        BUCKET_SIZE = Math.pow(2, 5),
         mask = (BUCKET_SIZE - 1),
         MAX_INDEX_NODE = (BUCKET_SIZE / 2),
         MIN_ARRAY_NODE = (BUCKET_SIZE / 4),
         nothing = ({}),
+        isNothing = (function(y) {
+            return (nothing === y);
+        }),
+        maybe = (function(val, def) {
+            return ((nothing === val) ? def : val);
+        }),
         popcount = (function(x) {
             var x0 = (x - ((x >> 1) & 1431655765)),
                 x1 = ((x0 & 858993459) + ((x0 >> 2) & 858993459)),
@@ -18,19 +32,58 @@ define(["require", "exports"], (function(require, exports) {
                 x4 = (x3 + (x3 >> 16));
             return (x4 & 127);
         }),
+        hashFragment = (function(shift, h) {
+            return ((h >>> shift) & mask);
+        }),
+        toBitmap = (function(y) {
+            return (1 << y);
+        }),
+        fromBitmap = (function(bitmap, bit) {
+            return popcount((bitmap & (bit - 1)));
+        }),
         arrayUpdate = (function(at, v, arr) {
-            var out = arr.slice();
+            var len = arr.length,
+                out = new(Array)(len);
+            for (var i = 0;
+                (i < len);
+                (i = (i + 1))) {
+                (out[i] = arr[i]);
+            }
             (out[at] = v);
             return out;
         }),
         arraySpliceOut = (function(at, arr) {
-            var out = arr.slice();
-            out.splice(at, 1);
+            var len = arr.length,
+                out = new(Array)((len - 1)),
+                i = 0;
+            for (;
+                (i < at);
+                (i = (i + 1))) {
+                (out[i] = arr[i]);
+            }
+            (i = (i + 1));
+            for (;
+                (i < len);
+                (i = (i + 1))) {
+                (out[(i - 1)] = arr[i]);
+            }
             return out;
         }),
         arraySpliceIn = (function(at, v, arr) {
-            var out = arr.slice();
-            out.splice(at, 0, v);
+            var len = arr.length,
+                out = new(Array)((len + 1)),
+                i = 0;
+            for (;
+                (i < at);
+                (i = (i + 1))) {
+                (out[i] = arr[i]);
+            }
+            (out[i] = v);
+            for (;
+                (i < len);
+                (i = (i + 1))) {
+                (out[(i + 1)] = arr[i]);
+            }
             return out;
         });
     (hash = (function(str) {
@@ -66,6 +119,7 @@ define(["require", "exports"], (function(require, exports) {
             (self.count = count);
             (self.children = children);
         }),
+        isEmpty = __lnot,
         isLeaf = (function(node) {
             return (((node === null) || (node instanceof Leaf)) || (node instanceof Collision));
         }),
@@ -259,6 +313,7 @@ define(["require", "exports"], (function(require, exports) {
         return nothing;
     });
     (removeHash = (function(h, k, m) {
+        var f = del;
         return ((!m) ? ((nothing === nothing) ? null : new(Leaf)(h, k, nothing)) : m.modify(0, del, h,
             k));
     }));

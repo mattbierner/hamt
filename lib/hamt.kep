@@ -92,8 +92,6 @@ var fromBitmap := \bitmap bit ->
 
 /* Array Ops
  ******************************************************************************/
-var copy := \arr -> arr.slice();
-
 /**
  * Set a value in an array.
  * 
@@ -102,33 +100,48 @@ var copy := \arr -> arr.slice();
  * @param arr Array.
  */
 var arrayUpdate := \at v arr -> {
-    var out := copy arr;
+    var len := arr.length;
+    var out := new Array(len);
+    for (var i = 0; i < len; i = i + 1) 
+        out.(i) = arr.(i);
     out.(at) = v;
     return out;
 };
 
 /**
- * Remove a value from an array .
+ * Remove a value from an array.
  * 
  * @param at Index to remove.
  * @param arr Array.
  */
-var arraySpliceOut := \at arr -> {
-    var out := copy arr;
-    out.splice(at, 1);
+var arraySpliceOut = \at arr -> {
+    var len := arr.length;
+    var out := new Array(len - 1);
+    var i = 0;
+    for (; i < at; i = i + 1)
+        out.(i) = arr.(i);
+    i = i + 1;
+    for (; i < len; i = i + 1)
+        out.(i - 1) = arr.(i);
     return out;
 };
 
 /**
  * Insert a value into an array.
  * 
- * @param at Index to remove.
+ * @param at Index to insert at.
  * @param v Value to insert,
  * @param arr Array.
  */
-var arraySpliceIn := \at v arr -> {
-    var out := copy arr;
-    out.splice(at, 0, v);
+var arraySpliceIn = \at v arr -> {
+    var len := arr.length;
+    var out := new Array(len + 1);
+    var i = 0;
+    for (; i < at; i = i + 1)
+        out.(i) = arr.(i);
+    out.(i) = v;
+    for (; i < len; i = i + 1)
+        out.(i + 1) = arr.(i);
     return out;
 };
 

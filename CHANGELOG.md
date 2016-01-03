@@ -1,5 +1,8 @@
 # ChangeLog #
 
+## 0.1.9 - January 2, 2016
+* Inline array update operations for better performances as suggested by @MichaelOstermann.
+
 ## 0.1.8 - September 27, 2014
 * Fixed collision nodes on unexpanded branch not being expanded on insertions
   further down branch. Thanks raymond-w-ko for reporting this and providing test
