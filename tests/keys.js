@@ -8,12 +8,15 @@ describe('keys', () => {
     });
     
     it('should return single key for single element map', () => {
-        assert.deepEqual(['a'], hamt.keys(hamt.set('a', 5, hamt.empty)));
-        assert.deepEqual(['b'], hamt.keys(hamt.set('b', 5, hamt.empty)));
+        assert.deepEqual(['a'], hamt.keys(hamt.empty.set('a', 5)));
+        assert.deepEqual(['b'], hamt.empty.set('b', 5).keys());
     });
     
     it('should return all keys for collision', () => {
-        const h1 = hamt.setHash(0, 'b', 5, hamt.setHash(0, 'a', 3, hamt.empty));
+        const h1 = hamt.empty
+            ._modify(0, () => 3, 0, 'a')
+            ._modify(0, () => 5, 0, 'b');
+            
         assert.sameMembers(['a', 'b'], hamt.keys(h1));
     });
     
@@ -27,7 +30,7 @@ describe('keys', () => {
     
         let h = hamt.empty;
         insert.forEach(x => {
-            h = hamt.set(x, x, h);
+            h = h.set(x, x);
         });
     
         assert.sameMembers(insert, hamt.keys(h));

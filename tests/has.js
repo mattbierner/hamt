@@ -9,23 +9,23 @@ describe('has', () => {
     });
     
     it('should return if entry exists for single map', () => {
-        var h1 = hamt.set('a', 3, hamt.empty);
+        var h1 = hamt.empty.set('a', 3);
     
-        assert.strictEqual(true, hamt.has('a', h1));
-        assert.strictEqual(false, hamt.has('b', h1));
+        assert.strictEqual(true, h1.has('a'));
+        assert.strictEqual(false, h1.has('b'));
     });
     
      it('should not depend on stored value', () => {    
-        assert.strictEqual(true, hamt.has('a', hamt.set('a', false, hamt.empty)));
-        assert.strictEqual(true, hamt.has('a', hamt.set('a', true, hamt.empty)));
-        assert.strictEqual(true, hamt.has('a', hamt.set('a', null, hamt.empty)));
-        assert.strictEqual(true, hamt.has('a', hamt.set('a', undefined, hamt.empty)));
+        assert.strictEqual(true, hamt.has('a', hamt.empty.set('a', 3)));
+        assert.strictEqual(true, hamt.has('a', hamt.empty.set('a', false)));
+        assert.strictEqual(true, hamt.has('a', hamt.empty.set('a', null)));
+        assert.strictEqual(true, hamt.has('a', hamt.empty.set('a', undefined)));
     });
     
     it('should return if entry exists in map', () => {
         var h = hamt.empty;
         for (let i = 'A'.charCodeAt(0); i < 'z'.charCodeAt(0); i += 2) {
-            h = hamt.set(String.fromCharCode(i), i, h);
+            h = h.set(String.fromCharCode(i), i);
         }
     
         for (let i = 'A'.charCodeAt(0); i < 'z'.charCodeAt(0);) {

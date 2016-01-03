@@ -4,7 +4,7 @@
  * @fileOverview Hash Array Mapped Trie.
  * 
  * Code based on: https://github.com/exclipy/pdata
- */
+*/
 var hamt = {};
 
 var constant = function constant(x) {
@@ -19,7 +19,7 @@ var SIZE = 5;
 
 var BUCKET_SIZE = Math.pow(2, SIZE);
 
-var mask = BUCKET_SIZE - 1;
+var MASK = BUCKET_SIZE - 1;
 
 var MAX_INDEX_NODE = BUCKET_SIZE / 2;
 
@@ -27,10 +27,10 @@ var MIN_ARRAY_NODE = BUCKET_SIZE / 4;
 
 /* Nothing
  ******************************************************************************/
-var nothing = {};
+var nothing = { __hamt_nothing: true };
 
 var isNothing = function isNothing(x) {
-    return x === nothing;
+    return x === nothing || x && x.__hamt_nothing;
 };
 
 var maybe = function maybe(val, def) {
@@ -43,7 +43,7 @@ var maybe = function maybe(val, def) {
  * Hamming weight.
  * 
  * Taken from: http://jsperf.com/hamming-weight
- */
+*/
 var popcount = function popcount(x) {
     x -= x >> 1 & 0x55555555;
     x = (x & 0x33333333) + (x >> 2 & 0x33333333);
@@ -54,7 +54,7 @@ var popcount = function popcount(x) {
 };
 
 var hashFragment = function hashFragment(shift, h) {
-    return h >>> shift & mask;
+    return h >>> shift & MASK;
 };
 
 var toBitmap = function toBitmap(x) {
@@ -73,7 +73,7 @@ var fromBitmap = function fromBitmap(bitmap, bit) {
  * @param at Index to change.
  * @param v New value
  * @param arr Array.
- */
+*/
 var arrayUpdate = function arrayUpdate(at, v, arr) {
     var len = arr.length;
     var out = new Array(len);
@@ -88,16 +88,17 @@ var arrayUpdate = function arrayUpdate(at, v, arr) {
  * 
  * @param at Index to remove.
  * @param arr Array.
- */
+*/
 var arraySpliceOut = function arraySpliceOut(at, arr) {
     var len = arr.length;
     var out = new Array(len - 1);
-    var i = 0;
-    for (; i < at; ++i) {
-        out[i] = arr[i];
+    var i = 0,
+        g = 0;
+    while (i < at) {
+        out[g++] = arr[i++];
     }++i;
-    for (; i < len; ++i) {
-        out[i - 1] = arr[i];
+    while (i < len) {
+        out[g++] = arr[i++];
     }return out;
 };
 
@@ -107,16 +108,17 @@ var arraySpliceOut = function arraySpliceOut(at, arr) {
  * @param at Index to insert at.
  * @param v Value to insert,
  * @param arr Array.
- */
+*/
 var arraySpliceIn = function arraySpliceIn(at, v, arr) {
     var len = arr.length;
     var out = new Array(len + 1);
     var i = 0;
-    for (; i < at; ++i) {
-        out[i] = arr[i];
-    }out[i] = v;
-    for (; i < len; ++i) {
-        out[i + 1] = arr[i];
+    var g = 0;
+    while (i < at) {
+        out[g++] = arr[i++];
+    }out[g++] = v;
+    while (i < len) {
+        out[g++] = arr[i++];
     }return out;
 };
 
@@ -127,7 +129,7 @@ var arraySpliceIn = function arraySpliceIn(at, v, arr) {
  * 
  * Based on:
  * http://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
- */
+*/
 var hash = hamt.hash = function (str) {
     if (typeof str === 'number') return str;
 
@@ -141,11 +143,13 @@ var hash = hamt.hash = function (str) {
 
 /* Node Structures
  ******************************************************************************/
+var Node = function Node() {};
+
 /**
  * Empty node.
- */
-var empty = { __hamt_isEmpty: true };
-hamt.empty = empty;
+*/
+var empty = hamt.empty = new Node();
+empty.__hamt_isEmpty = true;
 
 /**
  * Leaf holding a value.
@@ -153,23 +157,25 @@ hamt.empty = empty;
  * @member hash Hash of key.
  * @member key Key.
  * @member value Value stored.
- */
+*/
 var Leaf = function Leaf(hash, key, value) {
     this.hash = hash;
     this.key = key;
     this.value = value;
 };
+Leaf.prototype = new Node();
 
 /**
  * Leaf holding multiple values with the same hash but different keys.
  * 
  * @member hash Hash of key.
  * @member children Array of collision children node.
- */
+*/
 var Collision = function Collision(hash, children) {
     this.hash = hash;
     this.children = children;
 };
+Collision.prototype = new Node();
 
 /**
  * Internal node with a sparse set of children.
@@ -178,22 +184,24 @@ var Collision = function Collision(hash, children) {
  * 
  * @member mask Bitmap that encode the positions of children in the array.
  * @member children Array of child nodes.
- */
+*/
 var IndexedNode = function IndexedNode(mask, children) {
     this.mask = mask;
     this.children = children;
 };
+IndexedNode.prototype = new Node();
 
 /**
  * Internal node with many children.
  * 
  * @member count Number of children.
  * @member children Array of child nodes.
- */
+*/
 var ArrayNode = function ArrayNode(count, children) {
     this.count = count;
     this.children = children;
 };
+ArrayNode.prototype = new Node();
 
 /* 
  ******************************************************************************/
@@ -203,7 +211,7 @@ var isEmpty = function isEmpty(x) {
 
 /**
  * Is `node` a leaf node?
- */
+*/
 var isLeaf = function isLeaf(node) {
     return node === empty || node instanceof Leaf || node instanceof Collision;
 };
@@ -215,17 +223,15 @@ var isLeaf = function isLeaf(node) {
  * @param child Added child.
  * @param mask Index node mask before child added.
  * @param subNodes Index node children before child added.
- */
+*/
 var expand = function expand(frag, child, bitmap, subNodes) {
-    var bit = bitmap;
     var arr = [];
+
+    var bit = bitmap;
     var count = 0;
     for (var i = 0; bit; ++i) {
-        if (bit & 1) {
-            arr[i] = subNodes[count];
-            ++count;
-        }
-        bit = bit >>> 1;
+        if (bit & 1) arr[i] = subNodes[count++];
+        bit >>>= 1;
     }
     arr[frag] = child;
     return new ArrayNode(count + 1, arr);
@@ -233,15 +239,15 @@ var expand = function expand(frag, child, bitmap, subNodes) {
 
 /**
  * Collapse an array node into a indexed node.
- */
-var pack = function pack(removed, elements) {
-    var children = [];
+*/
+var pack = function pack(count, removed, elements) {
+    var children = new Array(count - 1);
+    var g = 0;
     var bitmap = 0;
-
     for (var i = 0, len = elements.length; i < len; ++i) {
         var elem = elements[i];
         if (i !== removed && !isEmpty(elem)) {
-            children.push(elem);
+            children[g++] = elem;
             bitmap |= 1 << i;
         }
     }
@@ -252,9 +258,11 @@ var pack = function pack(removed, elements) {
  * Merge two leaf nodes.
  * 
  * @param shift Current shift.
- * @param n1 Node.
- * @param n2 Node.
- */
+ * @param h1 Node 1 hash.
+ * @param n1 Node 1.
+ * @param h2 Node 2 hash.
+ * @param n2 Node 2.
+*/
 var mergeLeaves = function mergeLeaves(shift, h1, n1, h2, n2) {
     if (h1 === h2) return new Collision(h1, [n2, n1]);
 
@@ -270,10 +278,10 @@ var mergeLeaves = function mergeLeaves(shift, h1, n1, h2, n2) {
  * @param list Collision list.
  * @param f Update function.
  * @param k Key to update.
- */
+*/
 var updateCollisionList = function updateCollisionList(h, list, f, k) {
-    var target,
-        i = 0;
+    var target = undefined;
+    var i = 0;
     for (var len = list.length; i < len; ++i) {
         var child = list[i];
         if (child.key === k) {
@@ -290,15 +298,15 @@ var updateCollisionList = function updateCollisionList(h, list, f, k) {
  ******************************************************************************/
 /**
  * Leaf::get
- */
-Leaf.prototype.lookup = function (_, h, k) {
+*/
+Leaf.prototype._lookup = function (_, h, k) {
     return k === this.key ? this.value : nothing;
 };
 
 /**
  * Collision::get
- */
-Collision.prototype.lookup = function (_, h, k) {
+*/
+Collision.prototype._lookup = function (_, h, k) {
     if (h === this.hash) {
         var children = this.children;
         for (var i = 0, len = children.length; i < len; ++i) {
@@ -311,44 +319,38 @@ Collision.prototype.lookup = function (_, h, k) {
 
 /**
  * IndexedNode::get
- */
-IndexedNode.prototype.lookup = function (shift, h, k) {
+*/
+IndexedNode.prototype._lookup = function (shift, h, k) {
     var frag = hashFragment(shift, h);
     var bit = toBitmap(frag);
-    return this.mask & bit ? this.children[fromBitmap(this.mask, bit)].lookup(shift + SIZE, h, k) : nothing;
+    return this.mask & bit ? this.children[fromBitmap(this.mask, bit)]._lookup(shift + SIZE, h, k) : nothing;
 };
 
 /**
  * ArrayNode::get
- */
-ArrayNode.prototype.lookup = function (shift, h, k) {
+*/
+ArrayNode.prototype._lookup = function (shift, h, k) {
     var frag = hashFragment(shift, h);
     var child = this.children[frag];
-    return child.lookup(shift + SIZE, h, k);
+    return child._lookup(shift + SIZE, h, k);
 };
 
-empty.lookup = function () {
+empty._lookup = function () {
     return nothing;
 };
 
 /* Editing
  ******************************************************************************/
-/**
- * Leaf::modify
- */
-Leaf.prototype.modify = function (shift, f, h, k) {
+Leaf.prototype._modify = function (shift, f, h, k) {
     if (k === this.key) {
-        var v = f(this.value);
-        return isNothing(v) ? empty : new Leaf(h, k, v);
+        var _v = f(this.value);
+        return isNothing(_v) ? empty : new Leaf(h, k, _v);
     }
     var v = f();
     return isNothing(v) ? this : mergeLeaves(shift, this.hash, this, h, new Leaf(h, k, v));
 };
 
-/**
- * Collision::modify
- */
-Collision.prototype.modify = function (shift, f, h, k) {
+Collision.prototype._modify = function (shift, f, h, k) {
     if (h === this.hash) {
         var list = updateCollisionList(this.hash, this.children, f, k);
         return list.length > 1 ? new Collision(this.hash, list) : list[0]; // collapse single element collision list
@@ -357,52 +359,53 @@ Collision.prototype.modify = function (shift, f, h, k) {
     return isNothing(v) ? this : mergeLeaves(shift, this.hash, this, h, new Leaf(h, k, v));
 };
 
-/**
- * IndexedNode::modify
- */
-IndexedNode.prototype.modify = function (shift, f, h, k) {
+IndexedNode.prototype._modify = function (shift, f, h, k) {
     var mask = this.mask;
     var children = this.children;
     var frag = hashFragment(shift, h);
     var bit = toBitmap(frag);
     var indx = fromBitmap(mask, bit);
     var exists = mask & bit;
+    var current = exists ? children[indx] : empty;
+    var child = current._modify(shift + SIZE, f, h, k);
 
-    var child = (exists ? children[indx] : empty).modify(shift + SIZE, f, h, k);
+    if (exists && isEmpty(child)) {
+        // remove
+        var bitmap = mask & ~bit;
+        if (!bitmap) return empty;
+        return children.length <= 2 && isLeaf(children[indx ^ 1]) ? children[indx ^ 1] // collapse
+        : new IndexedNode(bitmap, arraySpliceOut(indx, children));
+    }
+    if (!exists && !isEmpty(child)) {
+        // add
+        return children.length >= MAX_INDEX_NODE ? expand(frag, child, mask, children) : new IndexedNode(mask | bit, arraySpliceIn(indx, child, children));
+    }
 
-    var removed = exists && isEmpty(child);
-    var added = !exists && !isEmpty(child);
-
-    var bitmap = removed ? mask & ~bit : added ? mask | bit : mask;
-
-    return !bitmap ? empty : removed ? children.length <= 2 && isLeaf(children[indx ^ 1]) ? children[indx ^ 1] // collapse
-    : new IndexedNode(bitmap, arraySpliceOut(indx, children)) : added ? children.length >= MAX_INDEX_NODE ? expand(frag, child, mask, children) : new IndexedNode(bitmap, arraySpliceIn(indx, child, children))
-
-    // Modify
-    : new IndexedNode(bitmap, arrayUpdate(indx, child, children));
+    // modify
+    return current === child ? this : new IndexedNode(mask, arrayUpdate(indx, child, children));
 };
 
-/**
- * ArrayNode::modify
- */
-ArrayNode.prototype.modify = function (shift, f, h, k) {
+ArrayNode.prototype._modify = function (shift, f, h, k) {
     var count = this.count;
     var children = this.children;
     var frag = hashFragment(shift, h);
     var child = children[frag];
-    var newChild = (child || empty).modify(shift + SIZE, f, h, k);
+    var newChild = (child || empty)._modify(shift + SIZE, f, h, k);
 
-    return isEmpty(child) && !isEmpty(newChild)
-    // add
-    ? new ArrayNode(count + 1, arrayUpdate(frag, newChild, children)) : !isEmpty(child) && isEmpty(newChild)
-    // remove
-    ? count - 1 <= MIN_ARRAY_NODE ? pack(frag, children) : new ArrayNode(count - 1, arrayUpdate(frag, empty, children))
+    if (isEmpty(child) && !isEmpty(newChild)) {
+        // add
+        return new ArrayNode(count + 1, arrayUpdate(frag, newChild, children));
+    }
+    if (!isEmpty(child) && isEmpty(newChild)) {
+        // remove
+        return count - 1 <= MIN_ARRAY_NODE ? pack(count, frag, children) : new ArrayNode(count - 1, arrayUpdate(frag, empty, children));
+    }
 
-    // Modify
-    : new ArrayNode(count, arrayUpdate(frag, newChild, children));
+    // modify
+    return child === newChild ? this : new ArrayNode(count, arrayUpdate(frag, newChild, children));
 };
 
-empty.modify = function (_, f, h, k) {
+empty._modify = function (_, f, h, k) {
     var v = f();
     return isNothing(v) ? empty : new Leaf(h, k, v);
 };
@@ -410,158 +413,98 @@ empty.modify = function (_, f, h, k) {
 /* Queries
  ******************************************************************************/
 /**
- * Lookup a value.
- * 
- * Returns the value stored for the given hash and key, or alt if none.
- * 
- * @param alt Fallback value.
- * @param h 32 bit hash.
- * @param k Key.
- * @param m HAMT
- */
-var tryGetHash = hamt.tryGetHash = function (alt, h, k, m) {
-    return maybe(m.lookup(0, h, k), alt);
+    Lookup the value for `key` in `map`.
+    
+    Returns the value or `alt` if none.
+*/
+var tryGet = hamt.tryGet = function (alt, key, map) {
+    return maybe(map._lookup(0, hash(key), key), alt);
+};
+
+Node.prototype.tryGet = function (key, alt) {
+    return tryGet(alt, key, this);
 };
 
 /**
- * Lookup a value using the internal `hash`.
- * 
- * @see getHash
- */
-var tryGet = hamt.tryGet = function (alt, k, m) {
-    return tryGetHash(alt, hash(k), k, m);
+    Lookup the value for `key` in `map`.
+    
+    Returns the value or `undefined` if none.
+*/
+var get = hamt.get = function (key, map) {
+    return tryGet(null, key, map);
+};
+
+Node.prototype.get = function (key, alt) {
+    return tryGet(alt, key, this);
 };
 
 /**
- * Lookup a value.
- * 
- * Returns the value stored for the given hash an key or null if none.
- * 
- * @param h 32 bit hash.
- * @param k Key.
- * @param m HAMT
- */
-var getHash = hamt.getHash = function (h, k, m) {
-    return tryGetHash(null, h, k, m);
+    Does an entry exist for `key` in `map`?
+*/
+var has = hamt.has = function (key, map) {
+    return !isNothing(tryGet(nothing, key, map));
 };
 
-/**
- * Lookup a value using the internal `hash`.
- * 
- * @see getHash
- */
-var get = hamt.get = function (k, m) {
-    return tryGet(null, k, m);
-};
-
-/**
- * Does an entry exist?
- * 
- * @param h 32 bit hash.
- * @param k Key.
- * @param m HAMT
- */
-var hasHash = hamt.hasHash = function (h, k, m) {
-    return !isNothing(tryGetHash(nothing, h, k, m));
-};
-
-/**
- * Check if a an entry exists using internal `hash`
- * 
- * @see hasHash
- */
-var has = hamt.has = function (k, m) {
-    return hasHash(hash(k), k, m);
+Node.prototype.has = function (key) {
+    return has(key, this);
 };
 
 /* Updates
  ******************************************************************************/
 /**
- * Modify the value stored for a hash.
- * 
- * Returns the modified data structure. The input `m` is not modified.
- * 
- * @param h 32 bit hash.
- * @param k Key.
- * @param f Function mapping current value to new value.
- * @param m HAMT
- */
-var modifyHash = hamt.modifyHash = function (h, k, f, m) {
-    return m.modify(0, f, h, k);
+    Alter the value stored for `key` in `map` using function `f`.
+    
+    `f` is invoked with the current value for `k` if it exists,
+    or no arguments if no such value exists. `modify` will always either
+    update or insert a value into the map.
+    
+    Returns a map with the modified value. Does not alter `map`.
+*/
+var modify = hamt.modify = function (f, key, map) {
+    return map._modify(0, f, hash(key), key);
+};
+
+Node.prototype.modify = function (key, f) {
+    return modify(f, key, this);
 };
 
 /**
- * Store a value using the internal `hash` function to calculate the hash from `key`
- * 
- * @see modifyHash
- */
-var modify = hamt.modify = function (k, f, m) {
-    return modifyHash(hash(k), k, f, m);
+    Store `value` for `key` in `map`.
+
+    Returns a map with the modified value. Does not alter `map`.
+*/
+var set = hamt.set = function (value, key, map) {
+    return modify(constant(value), key, map);
+};
+
+Node.prototype.set = function (key, value) {
+    return set(value, key, this);
 };
 
 /**
- * Store a value with an explicit hash.
- * 
- * @param h 32 bit hash.
- * @param k Key.
- * @param v Value to store.
- * @param m HAMT
- */
-var setHash = hamt.setHash = function (h, k, v, m) {
-    return modifyHash(h, k, constant(v), m);
-};
+    Remove the entry for `key` in `map`.
 
-/**
- * Store a value using the internal `hash` function to calculate the hash from `key`
- * 
- * @see setHash
- */
-var set = hamt.set = function (k, v, m) {
-    return setHash(hash(k), k, v, m);
-};
-
-/**
- * Delete a value with an explicit hash.
- * 
- * @param m HAMT
- * @param h 32 bit hash.
- * @param k Key.
- */
+    Returns a map with the value removed. Does not alter `map`.
+*/
 var del = constant(nothing);
-var removeHash = hamt.removeHash = function (h, k, m) {
-    return modifyHash(h, k, del, m);
+var remove = hamt.remove = function (key, map) {
+    return modify(del, key, map);
 };
 
-/**
- * Delete a value using the internal `hash` function to calculate the hash from `key`
- * 
- * @see removeHash
- */
-var remove = hamt.remove = function (k, m) {
-    return removeHash(hash(k), k, m);
+Node.prototype.remove = function (key) {
+    return remove(key, this);
 };
 
 /* Fold
  ******************************************************************************/
-/**
- * Leaf::fold
- */
 Leaf.prototype.fold = function (f, z) {
     return f(z, this);
 };
 
-/**
- * Collision::fold
- */
 Collision.prototype.fold = function (f, z) {
     return this.children.reduce(f, z);
 };
 
-/**
- * IndexedNode::fold
- * 
- * `this.children.reduce(fold@f, z)`
- */
 IndexedNode.prototype.fold = function (f, z) {
     var children = this.children;
     for (var i = 0, len = children.length; i < len; ++i) {
@@ -571,11 +514,6 @@ IndexedNode.prototype.fold = function (f, z) {
     return z;
 };
 
-/**
- * ArrayNode::fold
- * 
- * `this.children.reduce(fold@f, z)`
- */
 ArrayNode.prototype.fold = function (f, z) {
     var children = this.children;
     for (var i = 0, len = children.length; i < len; ++i) {
@@ -586,53 +524,59 @@ ArrayNode.prototype.fold = function (f, z) {
 };
 
 /**
- * Visit every entry in the map, aggregating data.
- * 
- * Order of nodes is not guaranteed.
- * 
- * @param f Function mapping previous value and key value object to new value.
- * @param z Starting value.
- * @param m HAMT
- */
+    Visit every entry in the map, aggregating data.
+
+    Order of nodes is not guaranteed.
+    
+    @param f Function mapping previous value and key value object to new value.
+    @param z Starting value.
+    @param m HAMT
+*/
 var fold = hamt.fold = function (f, z, m) {
     return isEmpty(m) ? z : m.fold(f, z);
+};
+
+Node.prototype.fold = function (f, z) {
+    return fold(f, z, this);
 };
 
 /* Aggregate
  ******************************************************************************/
 /**
- * Get the number of entries.
- * 
- * @param m HAMT.
- */
+    Get the number of entries in `map`.
+*/
 var inc = function inc(x) {
     return x + 1;
 };
-var count = hamt.count = function (m) {
-    return fold(inc, 0, m);
+var count = hamt.count = function (map) {
+    return fold(inc, 0, map);
+};
+
+Node.prototype.count = function () {
+    return count(this);
 };
 
 /**
- * Get array of all key value pairs as arrays of [key, value].
- * 
- * Order is not guaranteed.
- *
- * @param m HAMT.
- */
+    Get array of all key value pairs as arrays of [key, value] in `map`.
+ 
+    Order is not guaranteed.
+*/
 var buildPairs = function buildPairs(p, x) {
     p.push(x);return p;
 };
-var pairs = hamt.pairs = function (m) {
+var pairs = hamt.pairs = function (map) {
     return fold(buildPairs, [], m);
 };
 
+Node.prototype.pairs = function () {
+    return count(this);
+};
+
 /**
- * Get array of all keys.
- * 
- * Order is not guaranteed.
- * 
- * @param m HAMT.
- */
+    Get array of all keys in `map`.
+
+    Order is not guaranteed.
+*/
 var buildKeys = function buildKeys(p, x) {
     p.push(x.key);return p;
 };
@@ -640,18 +584,24 @@ var keys = hamt.keys = function (m) {
     return fold(buildKeys, [], m);
 };
 
+Node.prototype.keys = function () {
+    return keys(this);
+};
+
 /**
- * Get array of all values.
- * 
- * Order is not guaranteed, duplicates will be preserved.
- * 
- * @param m HAMT.
- */
+    Get array of all values in `map`.
+
+    Order is not guaranteed, duplicates are preserved.
+*/
 var buildValues = function buildValues(p, x) {
     p.push(x.value);return p;
 };
 var values = hamt.values = function (m) {
     return fold(buildValues, [], m);
+};
+
+Node.prototype.values = function () {
+    return values(this);
 };
 
 /* Export

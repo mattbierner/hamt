@@ -9,8 +9,8 @@ describe('remove', () => {
     });
     
     it('should remove value from single map', () => {
-        const h1 = hamt.set('a', 3, hamt.empty);
-        const h2 = hamt.remove('a', h1);
+        const h1 = hamt.empty.set('a', 3);
+        const h2 = h1.remove('a');
         
         assert.strictEqual(0, hamt.count(h2));
         assert.strictEqual(null, hamt.get('a', h2));
@@ -20,7 +20,9 @@ describe('remove', () => {
     });
     
     it('should only remove a single entry', () => {
-        const h1 = hamt.set('b', 5, hamt.set('a', 3, hamt.empty));
+        const h1 = hamt.empty
+            .set('a', 3)
+            .set('b', 5);
         const h2 = hamt.remove('a', h1);
         
         assert.strictEqual(1, hamt.count(h2));
@@ -33,25 +35,31 @@ describe('remove', () => {
     });
     
     it('should remove collisions correctly a single entry', () => {
-        const h1 = hamt.setHash(0, 'b', 5, hamt.setHash(0, 'a', 3, hamt.empty));
-        const h2 = hamt.removeHash(0, 'a', h1);
+        const h1 = hamt.empty
+            ._modify(0, () => 3, 0, 'a')
+            ._modify(0, () => 5, 0, 'b');
+
+        const h2 = h1._modify(0, () => ({ __hamt_nothing: true }), 0, 'a');
         
         assert.strictEqual(1, hamt.count(h2));
-        assert.strictEqual(null, hamt.getHash(0, 'a', h2));
-        assert.strictEqual(5, hamt.getHash(0, 'b', h2));
+        assert.strictEqual(true, h2._lookup(0, 0, 'a').__hamt_nothing);
+        assert.strictEqual(5, h2._lookup(0, 0, 'b'));
 
         assert.strictEqual(2, hamt.count(h1));
-        assert.strictEqual(3, hamt.getHash(0, 'a', h1));
-        assert.strictEqual(5, hamt.getHash(0, 'b', h1));
+        assert.strictEqual(3, h1._lookup(0, 0, 'a'));
+        assert.strictEqual(5, h1._lookup(0, 0, 'b'));
     });
     
      it('should not remove for a collision that does not match key', () => {
-        const h1 = hamt.setHash(0, 'b', 5, hamt.setHash(0, 'a', 3, hamt.empty));
-        const h2 = hamt.removeHash(0, 'c', h1);
+        const h1 = hamt.empty
+            ._modify(0, () => 3, 0, 'a')
+            ._modify(0, () => 5, 0, 'b');
+            
+        const h2 = h1._modify(0, () => ({ __hamt_nothing: true }), 0, 'c');
     
-        assert.strictEqual(hamt.getHash(0, 'a', h2), 3);
-        assert.strictEqual(hamt.getHash(0, 'b', h2), 5);
-        assert.strictEqual(hamt.getHash(0, 'c', h2), null);
+        assert.strictEqual(3, h2._lookup(0, 0, 'a'));
+        assert.strictEqual(5, h2._lookup(0, 0, 'b'));
+        assert.strictEqual(true, h2._lookup(0, 0, 'c').__hamt_nothing);
     });
     
     it('should remove correctly from large set', () => {

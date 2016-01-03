@@ -4,13 +4,13 @@ const assert = require('chai').assert;
 
 describe('set', () => {
     it('should add entry to empty map', () => {
-        const h = hamt.set('a', 3, hamt.empty);
+        const h = hamt.set(3, 'a', hamt.empty);
         assert.strictEqual(3, hamt.get('a', h));
     });
     
     it('should add entry to existing map', () => {
-        const h = hamt.set('a', 3, hamt.empty);
-        const h1 = hamt.set('b', 5, h);
+        const h = hamt.empty.set('a', 3);
+        const h1 = h.set('b', 5);
 
         assert.strictEqual(3, hamt.get('a', h1));
         assert.strictEqual(5, hamt.get('b', h1));
@@ -20,8 +20,11 @@ describe('set', () => {
     });
     
     it('should overwrite entry in existing map', () => {
-        const h1 = hamt.set('c', 10, hamt.set('b', 5, hamt.set('a', 3, hamt.empty)));
-        const h2 = hamt.set('b', 4, h1);
+        const h1 = hamt.empty
+            .set('a', 3)
+            .set('b', 5)
+            .set('c', 10);
+        const h2 = h1.set('b', 4);
 
         assert.strictEqual(3, hamt.get('a', h2));
         assert.strictEqual(4, hamt.get('b', h2));
@@ -33,22 +36,22 @@ describe('set', () => {
     });
     
     it('should handle collisions correctly', () => {
-        const h1 = hamt.setHash(0, 'a', 3, hamt.empty);
-        const h2 = hamt.setHash(0, 'b', 5, h1);
+        const h1 = hamt.empty._modify(0, () => 3, 0, 'a');
+        const h2 = h1._modify(0, () => 5, 0, 'b');
     
-        assert.strictEqual(3, hamt.getHash(0, 'a', h2));
-        assert.strictEqual(5, hamt.getHash(0, 'b', h2));
+        assert.strictEqual(3, h2._lookup(0, 0, 'a'));
+        assert.strictEqual(5, h2._lookup(0, 0, 'b'));
     });
         
     
     it('should add to collisions correctly', () => {
-        const h1 = hamt.setHash(0, 'a', 3, hamt.empty);
-        const h2 = hamt.setHash(0, 'b', 5, h1);
-        const h3 = hamt.setHash(1, 'c', 7, h2);
-
-        assert.strictEqual(3, hamt.getHash(0, 'a', h3));
-        assert.strictEqual(5, hamt.getHash(0, 'b', h3));
-        assert.strictEqual(7, hamt.getHash(1, 'c', h3));
+        const h1 = hamt.empty._modify(0, () => 3, 0, 'a');
+        const h2 = h1._modify(0, () => 5, 0, 'b');
+        const h3 = h2._modify(0, () => 7, 1, 'c');
+    
+        assert.strictEqual(3, h3._lookup(0, 0, 'a'));
+        assert.strictEqual(5, h3._lookup(0, 0, 'b'));
+        assert.strictEqual(7, h3._lookup(0, 1, 'c'));
     });
 
 
@@ -62,7 +65,7 @@ describe('set', () => {
     
         let h = hamt.empty;
         arr.forEach(function(x) {
-            h = hamt.set(x, x, h);
+            h = h.set(x, x);
         });
     
         arr.forEach(function(x) {
@@ -73,7 +76,7 @@ describe('set', () => {
     it('should set values correctly from an ordered list', () => {
         let h = hamt.empty;
         for (let i = 'A'.charCodeAt(0); i < 'z'.charCodeAt(0); ++i) {
-            h = hamt.set(String.fromCharCode(i), i, h);
+            h = h.set(String.fromCharCode(i), i);
         }
 
         for (let i = 'A'.charCodeAt(0); i < 'z'.charCodeAt(0); ++i) {

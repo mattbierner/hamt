@@ -8,12 +8,15 @@ describe('count', () => {
     });
     
     it('should return 1 for single element map', () => {
-        assert.strictEqual(1, hamt.count(hamt.set('a', 5, hamt.empty)));
-        assert.strictEqual(1, hamt.count(hamt.set('b', 5, hamt.empty)));
+        assert.strictEqual(1, hamt.count(hamt.empty.set('a', 5)));
+        assert.strictEqual(1, hamt.empty.set('b', 5).count());
     });
     
     it('should handle counts on collisions correctly', () => {
-        const h1 = hamt.setHash(0, 'b', 5, hamt.setHash(0, 'a', 3, hamt.empty));
+        const h1 = hamt.empty
+            ._modify(0, () => 3, 0, 'a')
+            ._modify(0, () => 5, 0, 'b');
+        
         assert.strictEqual(2, hamt.count(h1));
     });
     
@@ -36,12 +39,12 @@ describe('count', () => {
     
             for (let i = 0; i < insert.length; ++i) {
                 const x = insert[i];
-                h = hamt.set(x, x, h);
+                h = h.set(x, x);
                 assert.strictEqual(i + 1, hamt.count(h));
             }
     
             for (let i = 0; i < remove.length; ++i) {
-                h = hamt.remove(remove[i], h);
+                h = h.remove(remove[i]);
                 assert.strictEqual(remove.length - i - 1, hamt.count(h));
             }
     });
