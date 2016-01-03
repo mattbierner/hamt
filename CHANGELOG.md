@@ -1,5 +1,11 @@
 # ChangeLog #
 
+## 1.1.0 - January 3, 2016
+* Restored `*hash` variants of functions that take a custom hash and key.
+* Added `isEmpty` to check is a map contains any elements.
+* Fixed an issue where lookups of undefined values on an array node would fail.
+* Fixed `count` not working on array nodes properly.
+
 ## 1.0.0 - January 3, 2016
 * Rewrite in ES6.
 * Combined node and amd packages.

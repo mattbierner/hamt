@@ -194,11 +194,11 @@ IndexedNode.prototype = new Node();
 /**
  * Internal node with many children.
  * 
- * @member count Number of children.
+ * @member size Number of children.
  * @member children Array of child nodes.
 */
-var ArrayNode = function ArrayNode(count, children) {
-    this.count = count;
+var ArrayNode = function ArrayNode(size, children) {
+    this.size = size;
     this.children = children;
 };
 ArrayNode.prototype = new Node();
@@ -296,16 +296,10 @@ var updateCollisionList = function updateCollisionList(h, list, f, k) {
 
 /* Lookups
  ******************************************************************************/
-/**
- * Leaf::get
-*/
 Leaf.prototype._lookup = function (_, h, k) {
     return k === this.key ? this.value : nothing;
 };
 
-/**
- * Collision::get
-*/
 Collision.prototype._lookup = function (_, h, k) {
     if (h === this.hash) {
         var children = this.children;
@@ -317,22 +311,16 @@ Collision.prototype._lookup = function (_, h, k) {
     return nothing;
 };
 
-/**
- * IndexedNode::get
-*/
 IndexedNode.prototype._lookup = function (shift, h, k) {
     var frag = hashFragment(shift, h);
     var bit = toBitmap(frag);
     return this.mask & bit ? this.children[fromBitmap(this.mask, bit)]._lookup(shift + SIZE, h, k) : nothing;
 };
 
-/**
- * ArrayNode::get
-*/
 ArrayNode.prototype._lookup = function (shift, h, k) {
     var frag = hashFragment(shift, h);
     var child = this.children[frag];
-    return child._lookup(shift + SIZE, h, k);
+    return child ? child._lookup(shift + SIZE, h, k) : nothing;
 };
 
 empty._lookup = function () {
@@ -386,7 +374,7 @@ IndexedNode.prototype._modify = function (shift, f, h, k) {
 };
 
 ArrayNode.prototype._modify = function (shift, f, h, k) {
-    var count = this.count;
+    var count = this.size;
     var children = this.children;
     var frag = hashFragment(shift, h);
     var child = children[frag];
