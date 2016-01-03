@@ -54,12 +54,13 @@ var MIN_ARRAY_NODE := BUCKET_SIZE / 4;
  ******************************************************************************/
 var nothing := ({});
 
-var isNothing := (=== nothing);
+var isNothing := function\x -> {
+    return x === nothing;
+};
 
-var maybe := \val def ->
-    ?isNothing val
-        :def
-        :val;
+var maybe := function\val, def -> {
+    return ?isNothing val : def : val;
+};
 
 /* Bit Ops
  ******************************************************************************/
@@ -68,27 +69,26 @@ var maybe := \val def ->
  * 
  * Taken from: http://jsperf.com/hamming-weight
  */
-var popcount = let
-    m1 = 0x55555555,
-    m2 = 0x33333333,
-    m4 = 0x0f0f0f0f
+var popcount = function\x -> let
+    x = x - ((x >> 1) & 0x55555555),
+    x = (x & 0x33333333) + ((x >> 2) & 0x33333333),
+    x = (x + (x >> 4)) & 0x0f0f0f0f,
+    x = x + (x >> 8),
+    x = x + (x >> 16)
 in
-    \x -> let
-        x = x - ((x >> 1) & m1),
-        x = (x & m2) + ((x >> 2) & m2),
-        x = (x + (x >> 4)) & m4,
-        x = x + (x >> 8),
-        x = x + (x >> 16)
-    in
-        (x & 0x7f);
+    (x & 0x7f);
 
-var hashFragment := \shift h ->
-    (h >>> shift) & mask;
+var hashFragment := function\shift, h  -> {
+    return (h >>> shift) & mask;
+};
 
-var toBitmap := (<<, 1);
+var toBitmap := function\x -> {
+    return 1 << x;
+};
 
-var fromBitmap := \bitmap bit ->
-    popcount(bitmap & (bit - 1));
+var fromBitmap := function\bitmap bit -> {
+    return popcount(bitmap & (bit - 1));
+};
 
 /* Array Ops
  ******************************************************************************/
@@ -222,16 +222,18 @@ var ArrayNode := function \count children =self-> {
 
 /* 
  ******************************************************************************/
-var isEmpty := \x ->
-    !x || x === empty || (x && x.__hamt_isEmpty);
+var isEmpty = function\x -> {
+    return !x || x === empty || (x && x.__hamt_isEmpty);
+};
 
 /**
  * Is `node` a leaf node?
  */
-var isLeaf = \node ->
-    (  node === empty
-    || node instanceof Leaf
-    || node instanceof Collision);
+var isLeaf = function\node -> {
+    return (node === empty
+        || node instanceof Leaf
+        || node instanceof Collision);
+};
 
 /**
  * Expand an indexed node into an array node.
@@ -241,9 +243,10 @@ var isLeaf = \node ->
  * @param mask Index node mask before child added.
  * @param subNodes Index node children before child added.
  */
-var expand = \frag child bitmap subNodes -> {
+var expand = function\frag, child, bitmap, subNodes -> {
     var bit = bitmap;
-    var arr = [], count = 0;
+    var arr = [];
+    var count = 0;
     for (var i = 0; bit; i = i + 1) {
         if (bit & 1) {
             arr.(i) = subNodes.(count);
@@ -258,13 +261,13 @@ var expand = \frag child bitmap subNodes -> {
 /**
  * Collapse an array node into a indexed node.
  */
-var pack = \removed elements -> {
-    var children = [],
-        bitmap = 0;
+var pack = function\removed, elements -> {
+    var children = [];
+    var bitmap = 0;
     
-    for (var i = 0, len = elements.length; i < len; i = i + 1)
-    with elem = elements.(i) in {
-        if (i !== removed && !isEmpty elem) {
+    for (var i = 0, len = elements.length; i < len; i = i + 1) {
+        var elem = elements.(i);
+        if (i !== removed && !isEmpty(elem)) {
             children.push(elem);
             bitmap = bitmap | (1 << i);
         }
@@ -279,11 +282,10 @@ var pack = \removed elements -> {
  * @param n1 Node.
  * @param n2 Node.
  */
-var mergeLeaves = \shift n1 n2 -> let
-    h1 = n1.hash,
-    h2 = n2.hash
-in
-    ?h1 === h2
+var mergeLeaves = function\shift, n1, n2 -> {
+    var h1 = n1.hash;
+    var h2 = n2.hash;
+    return ?h1 === h2
         :new Collision(h1, [n2, n1])
         :let
             subH1 = hashFragment(shift, h1),
@@ -293,6 +295,7 @@ in
                 ?subH1 === subH2
                     :[mergeLeaves(shift + SIZE, n1, n2)]
                     :?subH1 < subH2 : [n1, n2] : [n2, n1]);
+};
 
 /**
  * Update an entry in a collision list.
@@ -302,20 +305,20 @@ in
  * @param f Update function.
  * @param k Key to update.
  */
-var updateCollisionList = \h list f k -> {
+var updateCollisionList = function\h, list, f, k -> {
     var target, i = 0;
-    for (var len = list.length; i < len; i = i + 1)
-    with child = list.(i) in {
+    for (var len = list.length; i < len; i = i + 1) {
+        var child = list.(i);
         if (child.key === k) {
             target = child;
             break;
         }
     }
     
-    return let v = ?target : f(target.value) : f() in
-        ?isNothing v
-            :arraySpliceOut(i, list)
-            :arrayUpdate(i, new Leaf(h, k, v), list);
+    var v = ?target : f(target.value) : f();
+    return ?isNothing(v)
+        :arraySpliceOut(i, list)
+        :arrayUpdate(i, new Leaf(h, k, v), list);
 };
 
 /* Lookups
@@ -323,18 +326,20 @@ var updateCollisionList = \h list f k -> {
 /**
  * Leaf::get
  */
-Leaf.prototype.lookup = \_ _ k =self->
-    ?k === self.key
+Leaf.prototype.lookup = function\_, _, k =self-> {
+    return ?k === self.key
         :self.value
         :nothing;
+};
 
 /**
  * Collision::get
  */
-Collision.prototype.lookup = \_ h k =self-> {
+Collision.prototype.lookup = function\_, h, k =self-> {
     if (h === self.hash) {
-        for (var i = 0, len = self.children.length; i < len; i = i + 1)
-        with child = self.children.(i) in {
+        var children = self.children;
+        for (var i = 0, len = children.length; i < len; i = i + 1) {
+            var child = children.(i);
             if (k === child.key)
                 return child.value;
         }
@@ -345,33 +350,32 @@ Collision.prototype.lookup = \_ h k =self-> {
 /**
  * IndexedNode::get
  */
-IndexedNode.prototype.lookup = \shift h k =self-> let
-    frag = hashFragment(shift, h),
-    bit = toBitmap frag
-in
-    ?self.mask & bit
+IndexedNode.prototype.lookup = function\shift, h, k =self-> {
+    var frag = hashFragment(shift, h);
+    var bit = toBitmap(frag);
+    return ?self.mask & bit
         :self.children.(fromBitmap(self.mask, bit)).lookup(shift + SIZE, h, k)
         :nothing;
+};
 
 /**
  * ArrayNode::get
  */
-ArrayNode.prototype.lookup = \shift h k =self-> let
-    frag = hashFragment(shift, h),
-    child = self.children.(frag)
-in
-    child.lookup(shift + SIZE, h, k);
+ArrayNode.prototype.lookup = function\shift, h, k =self-> {
+    var frag = hashFragment(shift, h);
+    var child = self.children.(frag);
+    return child.lookup(shift + SIZE, h, k);
+};
 
-empty.lookup := \_ _ _ _ ->
-    nothing;
+empty.lookup = \ -> nothing;
 
 /* Editing
  ******************************************************************************/
 /**
  * Leaf::modify
  */
-Leaf.prototype.modify := \shift f h k =self->
-    ?k === self.key
+Leaf.prototype.modify = function\shift, f, h, k =self-> {
+    return ?k === self.key
         :let v = f(self.value) in
             ?isNothing v
                 :empty
@@ -380,12 +384,13 @@ Leaf.prototype.modify := \shift f h k =self->
         ?isNothing v
             :self
             :mergeLeaves(shift, self, new Leaf(h, k, v));
+};
 
 /**
  * Collision::modify
  */
-Collision.prototype.modify = \shift f h k =self#{hash children}->
-    ?h === hash
+Collision.prototype.modify = function\shift, f, h, k =self#{hash children}-> {
+    return ?h === hash
         :let list = updateCollisionList(hash, children, f, k) in
             ?list.length > 1
                 :new Collision(hash, list)
@@ -394,32 +399,33 @@ Collision.prototype.modify = \shift f h k =self#{hash children}->
         ?isNothing v
             :self
             :mergeLeaves(shift, self, new Leaf(h, k, v));
+};
 
 /**
  * IndexedNode::modify
  */
-IndexedNode.prototype.modify = \shift f h k ={mask children}-> let
-    frag = hashFragment(shift, h),
-    bit = toBitmap frag,
-    indx = fromBitmap(mask, bit),
-    exists = mask & bit,
+IndexedNode.prototype.modify = function\shift, f, h, k ={mask children}-> {
+    var frag = hashFragment(shift, h);
+    var bit = toBitmap(frag);
+    var indx = fromBitmap(mask, bit);
+    var exists = mask & bit;
     
-    child = (?exists : children.(indx) : empty).modify(shift + SIZE, f, h, k),
+    var child = (?exists : children.(indx) : empty).modify(shift + SIZE, f, h, k);
     
-    removed = exists && isEmpty child,
-    added = !exists && !isEmpty child,
+    var removed = exists && isEmpty child;
+    var added = !exists && !isEmpty child;
     
-    bitmap = ?removed
+    var bitmap = ?removed
         :mask & ~bit
         :?added
             :mask | bit
-            :mask
-in
-    ?!bitmap
+            :mask;
+    
+    return ?!bitmap
         :empty
     
     :?removed
-        :?children.length <= 2 && isLeaf children.(indx ^ 1)
+        :?children.length <= 2 && isLeaf(children.(indx ^ 1))
             :children.(indx ^ 1) // collapse
             :new IndexedNode(
                 bitmap,
@@ -436,16 +442,17 @@ in
     :new IndexedNode(
         bitmap,
         arrayUpdate(indx, child, children));
+};
 
 /**
  * ArrayNode::modify
  */
-ArrayNode.prototype.modify = \shift f h k ={count children}-> let
-    frag = hashFragment(shift, h),
-    child = children.(frag),
-    newChild = (child || empty).modify(shift + SIZE, f, h, k)
-in
-    ?isEmpty child && !isEmpty newChild
+ArrayNode.prototype.modify = function\shift f h k ={count children}-> {
+    var frag = hashFragment(shift, h);
+    var child = children.(frag);
+    var newChild = (child || empty).modify(shift + SIZE, f, h, k);
+    
+    return ?isEmpty child && !isEmpty newChild
         // add
         :new ArrayNode(
             count + 1,
@@ -463,12 +470,12 @@ in
     :new ArrayNode(
         count,
         arrayUpdate(frag, newChild, children));
+};
 
-empty.modify := \_ f h k ->
-    let v = f() in
-        ?isNothing v
-            :empty
-            :new Leaf(h, k, v);
+empty.modify := \_ f h k -> {
+    var v = f();
+    return ?isNothing(v): empty : new Leaf(h, k, v);
+};
 
 /* Queries
  ******************************************************************************/
@@ -502,14 +509,16 @@ tryGet := \alt k m ->
  * @param k Key.
  * @param m HAMT
  */
-getHash := tryGetHash @ null;
+getHash := \h, k, m ->
+    tryGetHash(null, h, k, m);
 
 /**
  * Lookup a value using the internal `hash`.
  * 
  * @see getHash
  */
-get := tryGet @ null;
+get := \k, m ->
+    tryGet(null, k, m);
 
 /**
  * Does an entry exist?
@@ -519,7 +528,7 @@ get := tryGet @ null;
  * @param m HAMT
  */
 hasHash := \h k m ->
-    !isNothing tryGetHash(nothing, h, k, m);
+    !isNothing(tryGetHash(nothing, h, k, m));
 
 /**
  * Check if a an entry exists using internal `hash`
@@ -646,7 +655,7 @@ ArrayNode.prototype.fold := \f z ={children}-> {
  * @param z Starting value.
  * @param m HAMT
  */
-fold := \f z m ->
+fold := \f, z, m ->
     ?isEmpty m
         :z
         :m.fold(f, z);
@@ -658,7 +667,9 @@ fold := \f z m ->
  * 
  * @param m HAMT.
  */
-count = fold @ (+ 1) @ 0;
+var inc = \x -> x + 1;
+count = \m ->
+    fold(inc, 0, m);
 
 /**
  * Get array of all key value pairs as arrays of [key, value].
@@ -667,9 +678,9 @@ count = fold @ (+ 1) @ 0;
  *
  * @param m HAMT.
  */
-pairs = let build = \p {key value} -> { p.push [key, value]; return p; } in
-    \m ->
-        fold(build, [], m);
+var buildPairs = \p, x -> { p.push(x); return p; };
+pairs = \m ->
+    fold(buildPairs, [], m);
 
 /**
  * Get array of all keys.
@@ -678,9 +689,9 @@ pairs = let build = \p {key value} -> { p.push [key, value]; return p; } in
  * 
  * @param m HAMT.
  */
-keys = let build = \p {key} -> { p.push key; return p; } in
-    \m ->
-        fold(build, [], m);
+var buildKeys = \p, {key} -> { p.push(key); return p; };
+keys = \m ->
+    fold(buildKeys, [], m);
 
 /**
  * Get array of all values.
@@ -689,7 +700,8 @@ keys = let build = \p {key} -> { p.push key; return p; } in
  * 
  * @param m HAMT.
  */
-values = let build = \p {value} -> { p.push value; return p; } in
-    \m ->
-        fold(build, [], m);
+var buildValues = \p, {value} -> { p.push(value); return p; };
+values = \m ->
+    fold(buildValues, [], m);
+    
 }
