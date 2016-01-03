@@ -1,9 +1,9 @@
 'use strict';
 
 /**
- * @fileOverview Hash Array Mapped Trie.
- * 
- * Code based on: https://github.com/exclipy/pdata
+	@fileOverview Hash Array Mapped Trie.
+	
+	Code based on: https://github.com/exclipy/pdata
 */
 var hamt = {};
 
@@ -27,10 +27,10 @@ var MIN_ARRAY_NODE = BUCKET_SIZE / 4;
 
 /* Nothing
  ******************************************************************************/
-var nothing = { __hamt_nothing: true };
+var nothing = {};
 
 var isNothing = function isNothing(x) {
-    return x === nothing || x && x.__hamt_nothing;
+    return x === nothing;
 };
 
 var maybe = function maybe(val, def) {
@@ -40,9 +40,9 @@ var maybe = function maybe(val, def) {
 /* Bit Ops
  ******************************************************************************/
 /**
- * Hamming weight.
- * 
- * Taken from: http://jsperf.com/hamming-weight
+	Hamming weight.
+	
+	Taken from: http://jsperf.com/hamming-weight
 */
 var popcount = function popcount(x) {
     x -= x >> 1 & 0x55555555;
@@ -68,11 +68,11 @@ var fromBitmap = function fromBitmap(bitmap, bit) {
 /* Array Ops
  ******************************************************************************/
 /**
- * Set a value in an array.
- * 
- * @param at Index to change.
- * @param v New value
- * @param arr Array.
+	Set a value in an array.
+	
+	@param at Index to change.
+	@param v New value
+	@param arr Array.
 */
 var arrayUpdate = function arrayUpdate(at, v, arr) {
     var len = arr.length;
@@ -84,10 +84,10 @@ var arrayUpdate = function arrayUpdate(at, v, arr) {
 };
 
 /**
- * Remove a value from an array.
- * 
- * @param at Index to remove.
- * @param arr Array.
+	Remove a value from an array.
+	
+	@param at Index to remove.
+	@param arr Array.
 */
 var arraySpliceOut = function arraySpliceOut(at, arr) {
     var len = arr.length;
@@ -103,11 +103,11 @@ var arraySpliceOut = function arraySpliceOut(at, arr) {
 };
 
 /**
- * Insert a value into an array.
- * 
- * @param at Index to insert at.
- * @param v Value to insert,
- * @param arr Array.
+	Insert a value into an array.
+	
+	@param at Index to insert at.
+	@param v Value to insert,
+	@param arr Array.
 */
 var arraySpliceIn = function arraySpliceIn(at, v, arr) {
     var len = arr.length;
@@ -125,10 +125,10 @@ var arraySpliceIn = function arraySpliceIn(at, v, arr) {
 /* 
  ******************************************************************************/
 /**
- * Get 32 bit hash of string.
- * 
- * Based on:
- * http://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
+	Get 32 bit hash of string.
+	
+	Based on:
+	http://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
 */
 var hash = hamt.hash = function (str) {
     if (typeof str === 'number') return str;
@@ -146,17 +146,21 @@ var hash = hamt.hash = function (str) {
 var Node = function Node() {};
 
 /**
- * Empty node.
+	Empty node.
 */
 var empty = hamt.empty = new Node();
 empty.__hamt_isEmpty = true;
 
+var isEmptyNode = function isEmptyNode(x) {
+    return x === empty || x && x.__hamt_isEmpty;
+};
+
 /**
- * Leaf holding a value.
- * 
- * @member hash Hash of key.
- * @member key Key.
- * @member value Value stored.
+	Leaf holding a value.
+	
+	@member hash Hash of key.
+	@member key Key.
+	@member value Value stored.
 */
 var Leaf = function Leaf(hash, key, value) {
     this.hash = hash;
@@ -166,10 +170,10 @@ var Leaf = function Leaf(hash, key, value) {
 Leaf.prototype = new Node();
 
 /**
- * Leaf holding multiple values with the same hash but different keys.
- * 
- * @member hash Hash of key.
- * @member children Array of collision children node.
+	Leaf holding multiple values with the same hash but different keys.
+	
+	@member hash Hash of key.
+	@member children Array of collision children node.
 */
 var Collision = function Collision(hash, children) {
     this.hash = hash;
@@ -178,12 +182,12 @@ var Collision = function Collision(hash, children) {
 Collision.prototype = new Node();
 
 /**
- * Internal node with a sparse set of children.
- * 
- * Uses a bitmap and array to pack children.
- * 
- * @member mask Bitmap that encode the positions of children in the array.
- * @member children Array of child nodes.
+	Internal node with a sparse set of children.
+	
+	Uses a bitmap and array to pack children.
+	
+	@member mask Bitmap that encode the positions of children in the array.
+	@member children Array of child nodes.
 */
 var IndexedNode = function IndexedNode(mask, children) {
     this.mask = mask;
@@ -192,10 +196,10 @@ var IndexedNode = function IndexedNode(mask, children) {
 IndexedNode.prototype = new Node();
 
 /**
- * Internal node with many children.
- * 
- * @member size Number of children.
- * @member children Array of child nodes.
+	Internal node with many children.
+	
+	@member size Number of children.
+	@member children Array of child nodes.
 */
 var ArrayNode = function ArrayNode(size, children) {
     this.size = size;
@@ -203,26 +207,22 @@ var ArrayNode = function ArrayNode(size, children) {
 };
 ArrayNode.prototype = new Node();
 
-/* 
- ******************************************************************************/
-var isEmptyNode = function isEmptyNode(x) {
-    return x === empty || x && x.__hamt_isEmpty;
-};
-
 /**
- * Is `node` a leaf node?
+	Is `node` a leaf node?
 */
 var isLeaf = function isLeaf(node) {
     return node === empty || node instanceof Leaf || node instanceof Collision;
 };
 
+/* Internal node operations.
+ ******************************************************************************/
 /**
- * Expand an indexed node into an array node.
- * 
- * @param frag Index of added child.
- * @param child Added child.
- * @param mask Index node mask before child added.
- * @param subNodes Index node children before child added.
+	Expand an indexed node into an array node.
+	
+	@param frag Index of added child.
+	@param child Added child.
+	@param mask Index node mask before child added.
+	@param subNodes Index node children before child added.
 */
 var expand = function expand(frag, child, bitmap, subNodes) {
     var arr = [];
@@ -238,7 +238,7 @@ var expand = function expand(frag, child, bitmap, subNodes) {
 };
 
 /**
- * Collapse an array node into a indexed node.
+	Collapse an array node into a indexed node.
 */
 var pack = function pack(count, removed, elements) {
     var children = new Array(count - 1);
@@ -255,13 +255,13 @@ var pack = function pack(count, removed, elements) {
 };
 
 /**
- * Merge two leaf nodes.
- * 
- * @param shift Current shift.
- * @param h1 Node 1 hash.
- * @param n1 Node 1.
- * @param h2 Node 2 hash.
- * @param n2 Node 2.
+	Merge two leaf nodes.
+	
+	@param shift Current shift.
+	@param h1 Node 1 hash.
+	@param n1 Node 1.
+	@param h2 Node 2 hash.
+	@param n2 Node 2.
 */
 var mergeLeaves = function mergeLeaves(shift, h1, n1, h2, n2) {
     if (h1 === h2) return new Collision(h1, [n2, n1]);
@@ -272,12 +272,12 @@ var mergeLeaves = function mergeLeaves(shift, h1, n1, h2, n2) {
 };
 
 /**
- * Update an entry in a collision list.
- * 
- * @param hash Hash of collision.
- * @param list Collision list.
- * @param f Update function.
- * @param k Key to update.
+    Update an entry in a collision list.
+
+    @param hash Hash of collision.
+    @param list Collision list.
+    @param f Update function.
+    @param k Key to update.
 */
 var updateCollisionList = function updateCollisionList(h, list, f, k) {
     var target = undefined;
