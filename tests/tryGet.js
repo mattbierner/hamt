@@ -35,7 +35,6 @@ describe('tryGet', () => {
             h = h.setHash(i, insert[i], insert[i]);
         }
         
-        console.log(h);
         assert.strictEqual(insert.length, h.count());
         
         for (let i = 0; i < insert.length; ++i) {

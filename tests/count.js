@@ -35,18 +35,39 @@ describe('count', () => {
             "k", "V", "N", "l", "X", "A", "]", "s", "Z", "O", "^", "o",
             "`", "H", "E", "e", "M", "u", "T", "c", "C"];
     
-            let h = hamt.empty;
+        let h = hamt.empty;
     
-            for (let i = 0; i < insert.length; ++i) {
-                const x = insert[i];
-                h = h.set(x, x);
-                assert.strictEqual(i + 1, hamt.count(h));
-            }
+        for (let i = 0; i < insert.length; ++i) {
+            const x = insert[i];
+            h = h.set(x, x);
+            assert.strictEqual(i + 1, hamt.count(h));
+        }
+
+        for (let i = 0; i < remove.length; ++i) {
+            h = h.remove(remove[i]);
+            assert.strictEqual(remove.length - i - 1, hamt.count(h));
+        }
+    });
     
-            for (let i = 0; i < remove.length; ++i) {
-                h = h.remove(remove[i]);
-                assert.strictEqual(remove.length - i - 1, hamt.count(h));
-            }
+      it('should work on array nodes correctly', () => {
+        const insert = [
+            "n", "U", "p", "^", "h", "w", "W", "x", "S", "f", "H", "m", "g",
+            "l", "b", "_", "V", "Z", "G", "o", "F", "Q", "a", "k", "j", "r",
+            "B", "A", "y", "\\", "R", "D", "i", "c", "]", "C", "[", "e", "s",
+            "t", "J", "E", "q", "v", "M", "T", "N", "L", "K", "Y", "d", "P",
+            "u", "I", "O", "`", "X"];
+    
+        let h = hamt.empty;
+        for (let i = 0; i < insert.length; ++i) {
+            h = h.setHash(i, insert[i], insert[i]);
+        }
+        
+        assert.strictEqual(insert.length, h.count());
+        
+        for (let i = 0; i < insert.length; ++i) {
+            h = h.removeHash(i, insert[i]);
+            assert.strictEqual(insert.length - i - 1, h.count());
+        }
     });
 });
 
