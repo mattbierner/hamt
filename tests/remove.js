@@ -13,7 +13,7 @@ describe('remove', () => {
         const h2 = h1.remove('a');
         
         assert.strictEqual(0, hamt.count(h2));
-        assert.strictEqual(null, hamt.get('a', h2));
+        assert.strictEqual(undefined, hamt.get('a', h2));
         
         assert.strictEqual(1, hamt.count(h1));
         assert.strictEqual(3, hamt.get('a', h1));
@@ -26,7 +26,7 @@ describe('remove', () => {
         const h2 = hamt.remove('a', h1);
         
         assert.strictEqual(1, hamt.count(h2));
-        assert.strictEqual(null, hamt.get('a', h2));
+        assert.strictEqual(undefined, hamt.get('a', h2));
         assert.strictEqual(5, hamt.get('b', h2));
 
         assert.strictEqual(2, hamt.count(h1));
@@ -88,7 +88,7 @@ describe('remove', () => {
             for (let g = 0; g <= i; ++g) {
                 assert.strictEqual(
                     hamt.get(remove[g], h),
-                    null);
+                    undefined);
             }
             for (let g = i + 1; g < remove.length; ++g) {
                 assert.strictEqual(

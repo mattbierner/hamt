@@ -16,7 +16,7 @@ describe('set', () => {
         assert.strictEqual(5, hamt.get('b', h1));
         
         assert.strictEqual(3, hamt.get('a', h));
-        assert.strictEqual(null, hamt.get('b', h));
+        assert.strictEqual(undefined, hamt.get('b', h));
     });
     
     it('should overwrite entry in existing map', () => {

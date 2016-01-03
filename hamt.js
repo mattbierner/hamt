@@ -431,7 +431,7 @@ Node.prototype.tryGet = function (key, alt) {
     Returns the value or `undefined` if none.
 */
 var get = hamt.get = function (key, map) {
-    return tryGet(null, key, map);
+    return tryGet(undefined, key, map);
 };
 
 Node.prototype.get = function (key, alt) {

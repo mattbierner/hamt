@@ -43,7 +43,7 @@ describe('modify', () => {
 
         assert.strictEqual(3, hamt.get('a', h));
         assert.strictEqual(5, hamt.get('b', h));
-        assert.strictEqual(null, hamt.get('c', h));
+        assert.strictEqual(undefined, hamt.get('c', h));
     });
 
     it('should modify collision values correctly', () => {
