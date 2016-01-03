@@ -36,18 +36,18 @@ describe('remove', () => {
     
     it('should remove collisions correctly a single entry', () => {
         const h1 = hamt.empty
-            ._modify(0, () => 3, 0, 'a')
-            ._modify(0, () => 5, 0, 'b');
+            .setHash(0, 'a', 3)
+            .setHash(0, 'b', 5);
 
-        const h2 = h1._modify(0, () => ({ __hamt_nothing: true }), 0, 'a');
+        const h2 = h1.deleteHash(0, 'a');
         
         assert.strictEqual(1, hamt.count(h2));
-        assert.strictEqual(true, h2._lookup(0, 0, 'a').__hamt_nothing);
-        assert.strictEqual(5, h2._lookup(0, 0, 'b'));
+        assert.strictEqual(undefined, h2.getHash(0, 'a'));
+        assert.strictEqual(5, h2.getHash(0, 'b'));
 
         assert.strictEqual(2, hamt.count(h1));
-        assert.strictEqual(3, h1._lookup(0, 0, 'a'));
-        assert.strictEqual(5, h1._lookup(0, 0, 'b'));
+        assert.strictEqual(3, h1.getHash(0, 'a'));
+        assert.strictEqual(5, h1.getHash(0, 'b'));
     });
     
      it('should not remove for a collision that does not match key', () => {

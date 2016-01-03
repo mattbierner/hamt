@@ -206,7 +206,7 @@ ArrayNode.prototype = new Node();
 /* 
  ******************************************************************************/
 var isEmptyNode = function isEmptyNode(x) {
-    return !x || x === empty || x && x.__hamt_isEmpty;
+    return x === empty || x && x.__hamt_isEmpty;
 };
 
 /**
@@ -490,7 +490,7 @@ Node.prototype.has = function (key) {
     Does `map` contain any elements?
 */
 var isEmpty = hamt.isEmpty = function (map) {
-    return isEmptyNode(map);
+    return !!isEmptyNode(map);
 };
 
 Node.prototype.isEmpty = function () {
@@ -564,7 +564,7 @@ Node.prototype.set = function (key, value) {
 */
 var del = constant(nothing);
 var removeHash = hamt.removeHash = function (hash, key, map) {
-    return modify(del, key, map);
+    return modifyHash(del, hash, key, map);
 };
 
 Node.prototype.removeHash = Node.prototype.deleteHash = function (hash, key) {
@@ -609,7 +609,7 @@ ArrayNode.prototype.fold = function (f, z) {
     var children = this.children;
     for (var i = 0, len = children.length; i < len; ++i) {
         var c = children[i];
-        if (!isEmptyNode(c)) z = c instanceof Leaf ? f(z, c.value, c.key) : c.fold(f, z);
+        if (c) z = c instanceof Leaf ? f(z, c.value, c.key) : c.fold(f, z);
     }
     return z;
 };
