@@ -210,7 +210,6 @@ define(["require", "exports"], (function(require, exports) {
     (empty.lookup = (function(_, _0, _1, _2) {
         return nothing;
     }));
-    var alter;
     (Leaf.prototype.modify = (function(shift, f, h, k) {
         var v, v0, self = this;
         return ((k === self.key) ? ((v = f(self.value)), ((nothing === v) ? empty : new(Leaf)(h, k, v))) :
@@ -233,7 +232,8 @@ define(["require", "exports"], (function(require, exports) {
             bitmap = mask0,
             indx = popcount((bitmap & (bit - 1))),
             exists = (mask0 & bit),
-            child = alter((exists ? children[indx] : empty), (shift + 5), f, h, k),
+            child = (exists ? children[indx] : empty)
+                .modify((shift + 5), f, h, k),
             removed = (exists && (((!child) || (child === empty)) || (child && child.__hamt_isEmpty))),
             added = ((!exists) && (!(((!child) || (child === empty)) || (child && child.__hamt_isEmpty)))),
             bitmap0 = (removed ? (mask0 & (~bit)) : (added ? (mask0 | bit) : mask0));
@@ -249,7 +249,8 @@ define(["require", "exports"], (function(require, exports) {
             children = __o["children"],
             frag = ((h >>> shift) & mask),
             child = children[frag],
-            newChild = alter(child, (shift + 5), f, h, k);
+            newChild = (child || empty)
+                .modify((shift + 5), f, h, k);
         return (((((!child) || (child === empty)) || (child && child.__hamt_isEmpty)) && (!(((!newChild) ||
             (newChild === empty)) || (newChild && newChild.__hamt_isEmpty)))) ? new(ArrayNode)((
             count + 1), arrayUpdate(frag, newChild, children)) : (((!(((!child) || (child === empty)) ||
@@ -258,10 +259,9 @@ define(["require", "exports"], (function(require, exports) {
                 frag, children) : new(ArrayNode)((count - 1), arrayUpdate(frag, empty, children))) :
             new(ArrayNode)(count, arrayUpdate(frag, newChild, children))));
     }));
-    (alter = (function(n, shift, f, h, k) {
-        var v;
-        return ((((!n) || (n === empty)) || (n && n.__hamt_isEmpty)) ? ((v = f()), ((nothing === v) ?
-            empty : new(Leaf)(h, k, v))) : n.modify(shift, f, h, k));
+    (empty.modify = (function(_, f, h, k) {
+        var v = f();
+        return ((nothing === v) ? empty : new(Leaf)(h, k, v));
     }));
     (tryGetHash = (function(alt, h, k, m) {
         var val = m.lookup(0, h, k);
@@ -291,38 +291,31 @@ define(["require", "exports"], (function(require, exports) {
         return (!((val = m.lookup(0, h, k)), (y = ((nothing === val) ? nothing : val)), (nothing === y)));
     }));
     (modifyHash = (function(h, k, f, m) {
-        var v;
-        return ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? ((v = f()), ((nothing === v) ?
-            empty : new(Leaf)(h, k, v))) : m.modify(0, f, h, k));
+        return m.modify(0, f, h, k);
     }));
     (modify = (function(k, f, m) {
-        var h = hash(k),
-            v;
-        return ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? ((v = f()), ((nothing === v) ?
-            empty : new(Leaf)(h, k, v))) : m.modify(0, f, h, k));
+        var h = hash(k);
+        return m.modify(0, f, h, k);
     }));
     (setHash = (function(h, k, v, m) {
         var f = (function() {
             return v;
         });
-        return ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? ((nothing === v) ? empty : new(
-            Leaf)(h, k, v)) : m.modify(0, f, h, k));
+        return m.modify(0, f, h, k);
     }));
     (set = (function(k, v, m) {
         var h = hash(k),
             f = (function() {
                 return v;
             });
-        return ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? ((nothing === v) ? empty : new(
-            Leaf)(h, k, v)) : m.modify(0, f, h, k));
+        return m.modify(0, f, h, k);
     }));
     var del = (function() {
         return nothing;
     });
     (removeHash = (function(h, k, m) {
         var f = del;
-        return ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? ((nothing === nothing) ? empty :
-            new(Leaf)(h, k, nothing)) : m.modify(0, del, h, k));
+        return m.modify(0, del, h, k);
     }));
     (remove = (function(k, m) {
         return removeHash(hash(k), k, m);

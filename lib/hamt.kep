@@ -367,8 +367,6 @@ empty.lookup := \_ _ _ _ ->
 
 /* Editing
  ******************************************************************************/
-var alter;
-
 /**
  * Leaf::modify
  */
@@ -406,7 +404,7 @@ IndexedNode.prototype.modify = \shift f h k ={mask children}-> let
     indx = fromBitmap(mask, bit),
     exists = mask & bit,
     
-    child = alter(?exists : children.(indx) : empty, shift + SIZE, f, h, k),
+    child = (?exists : children.(indx) : empty).modify(shift + SIZE, f, h, k),
     
     removed = exists && isEmpty child,
     added = !exists && !isEmpty child,
@@ -445,7 +443,7 @@ in
 ArrayNode.prototype.modify = \shift f h k ={count children}-> let
     frag = hashFragment(shift, h),
     child = children.(frag),
-    newChild = alter(child, shift + SIZE, f, h, k)
+    newChild = (child || empty).modify(shift + SIZE, f, h, k)
 in
     ?isEmpty child && !isEmpty newChild
         // add
@@ -466,13 +464,11 @@ in
         count,
         arrayUpdate(frag, newChild, children));
 
-alter := \n shift f h k ->
-    ?isEmpty n
-        :let v = f() in
-            ?isNothing v
-                :empty
-                :new Leaf(h, k, v)
-        :n.modify(shift, f, h, k);
+empty.modify := \_ f h k ->
+    let v = f() in
+        ?isNothing v
+            :empty
+            :new Leaf(h, k, v);
 
 /* Queries
  ******************************************************************************/
@@ -546,7 +542,7 @@ has := \k m ->
  * @param m HAMT
  */
 modifyHash := \h k f m ->
-    alter(m, 0, f, h, k);
+    m.modify(0, f, h, k);
 
 /**
  * Store a value using the internal `hash` function to calculate the hash from `key`
