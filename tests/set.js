@@ -36,22 +36,22 @@ describe('set', () => {
     });
     
     it('should handle collisions correctly', () => {
-        const h1 = hamt.empty._modify(0, () => 3, 0, 'a');
-        const h2 = h1._modify(0, () => 5, 0, 'b');
+        const h1 = hamt.empty.setHash(0, 'a', 3);
+        const h2 = h1.setHash(0, 'b', 5);
     
-        assert.strictEqual(3, h2._lookup(0, 0, 'a'));
-        assert.strictEqual(5, h2._lookup(0, 0, 'b'));
+        assert.strictEqual(3, h2.getHash(0, 'a'));
+        assert.strictEqual(5, h2.getHash(0, 'b'));
     });
         
     
     it('should add to collisions correctly', () => {
-        const h1 = hamt.empty._modify(0, () => 3, 0, 'a');
-        const h2 = h1._modify(0, () => 5, 0, 'b');
-        const h3 = h2._modify(0, () => 7, 1, 'c');
+        const h1 = hamt.empty.setHash(0, 'a', 3);
+        const h2 = h1.setHash(0, 'b', 5);
+        const h3 = h2.setHash(1, 'c', 7);
     
-        assert.strictEqual(3, h3._lookup(0, 0, 'a'));
-        assert.strictEqual(5, h3._lookup(0, 0, 'b'));
-        assert.strictEqual(7, h3._lookup(0, 1, 'c'));
+        assert.strictEqual(3, h3.getHash(0, 'a'));
+        assert.strictEqual(5, h3.getHash(0, 'b'));
+        assert.strictEqual(7, h3.getHash(1, 'c'));
     });
 
 

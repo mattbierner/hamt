@@ -52,17 +52,17 @@ describe('modify', () => {
             ._modify(0, () => 5, 0, 'b');
     
         const h3 = h1._modify(0, x => x * 2, 0, 'a');
-        assert.strictEqual(6, h3._lookup(0, 0, 'a'));
-        assert.strictEqual(5, h3._lookup(0, 0, 'b'));
+        assert.strictEqual(6, h3.getHash(0, 'a'));
+        assert.strictEqual(5, h3.getHash(0, 'b'));
     
         const h4 = h3._modify(0, x => x * 2, 0, 'b');
-        assert.strictEqual(6, h4._lookup(0, 0, 'a'));
-        assert.strictEqual(10, h4._lookup(0, 0, 'b'));
+        assert.strictEqual(6, h4.getHash(0, 'a'));
+        assert.strictEqual(10, h4.getHash(0, 'b'));
     
         // Non existant
         const h5 = h4._modify(0, _ => 100, 0, 'c');
-        assert.strictEqual(6, h5._lookup(0, 0, 'a'));
-        assert.strictEqual(10, h5._lookup(0, 0, 'b'));
-        assert.strictEqual(100, h5._lookup(0, 0, 'c'));
+        assert.strictEqual(6, h5.getHash(0, 'a'));
+        assert.strictEqual(10, h5.getHash(0, 'b'));
+        assert.strictEqual(100, h5.getHash(0, 'c'));
     });
 });

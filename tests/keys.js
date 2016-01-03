@@ -14,8 +14,8 @@ describe('keys', () => {
     
     it('should return all keys for collision', () => {
         const h1 = hamt.empty
-            ._modify(0, () => 3, 0, 'a')
-            ._modify(0, () => 5, 0, 'b');
+            .setHash(0, 'a', 3)
+            .setHash(0, 'b', 5);
             
         assert.sameMembers(['a', 'b'], hamt.keys(h1));
     });

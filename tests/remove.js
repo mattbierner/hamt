@@ -52,14 +52,14 @@ describe('remove', () => {
     
      it('should not remove for a collision that does not match key', () => {
         const h1 = hamt.empty
-            ._modify(0, () => 3, 0, 'a')
-            ._modify(0, () => 5, 0, 'b');
+            .setHash(0, 'a', 3)
+            .setHash(0, 'b', 5);
             
-        const h2 = h1._modify(0, () => ({ __hamt_nothing: true }), 0, 'c');
+        const h2 = h1.removeHash(0, 'c');
     
-        assert.strictEqual(3, h2._lookup(0, 0, 'a'));
-        assert.strictEqual(5, h2._lookup(0, 0, 'b'));
-        assert.strictEqual(true, h2._lookup(0, 0, 'c').__hamt_nothing);
+        assert.strictEqual(3, h2.getHash(0, 'a'));
+        assert.strictEqual(5, h2.getHash(0, 'b'));
+        assert.strictEqual(undefined, h2.getHash(0, 'c'));
     });
     
     it('should remove correctly from large set', () => {

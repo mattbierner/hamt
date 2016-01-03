@@ -14,8 +14,8 @@ describe('count', () => {
     
     it('should handle counts on collisions correctly', () => {
         const h1 = hamt.empty
-            ._modify(0, () => 3, 0, 'a')
-            ._modify(0, () => 5, 0, 'b');
+            .setHash(0, 'a', 3)
+            .setHash(0, 'b', 5);
         
         assert.strictEqual(2, hamt.count(h1));
     });

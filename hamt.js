@@ -205,7 +205,7 @@ ArrayNode.prototype = new Node();
 
 /* 
  ******************************************************************************/
-var isEmpty = function isEmpty(x) {
+var isEmptyNode = function isEmptyNode(x) {
     return !x || x === empty || x && x.__hamt_isEmpty;
 };
 
@@ -246,7 +246,7 @@ var pack = function pack(count, removed, elements) {
     var bitmap = 0;
     for (var i = 0, len = elements.length; i < len; ++i) {
         var elem = elements[i];
-        if (i !== removed && !isEmpty(elem)) {
+        if (i !== removed && !isEmptyNode(elem)) {
             children[g++] = elem;
             bitmap |= 1 << i;
         }
@@ -369,14 +369,14 @@ IndexedNode.prototype._modify = function (shift, f, h, k) {
     var current = exists ? children[indx] : empty;
     var child = current._modify(shift + SIZE, f, h, k);
 
-    if (exists && isEmpty(child)) {
+    if (exists && isEmptyNode(child)) {
         // remove
         var bitmap = mask & ~bit;
         if (!bitmap) return empty;
         return children.length <= 2 && isLeaf(children[indx ^ 1]) ? children[indx ^ 1] // collapse
         : new IndexedNode(bitmap, arraySpliceOut(indx, children));
     }
-    if (!exists && !isEmpty(child)) {
+    if (!exists && !isEmptyNode(child)) {
         // add
         return children.length >= MAX_INDEX_NODE ? expand(frag, child, mask, children) : new IndexedNode(mask | bit, arraySpliceIn(indx, child, children));
     }
@@ -392,11 +392,11 @@ ArrayNode.prototype._modify = function (shift, f, h, k) {
     var child = children[frag];
     var newChild = (child || empty)._modify(shift + SIZE, f, h, k);
 
-    if (isEmpty(child) && !isEmpty(newChild)) {
+    if (isEmptyNode(child) && !isEmptyNode(newChild)) {
         // add
         return new ArrayNode(count + 1, arrayUpdate(frag, newChild, children));
     }
-    if (!isEmpty(child) && isEmpty(newChild)) {
+    if (!isEmptyNode(child) && isEmptyNode(newChild)) {
         // remove
         return count - 1 <= MIN_ARRAY_NODE ? pack(count, frag, children) : new ArrayNode(count - 1, arrayUpdate(frag, empty, children));
     }
@@ -413,12 +413,25 @@ empty._modify = function (_, f, h, k) {
 /* Queries
  ******************************************************************************/
 /**
-    Lookup the value for `key` in `map`.
+    Lookup the value for `key` in `map` using a custom `hash`.
     
     Returns the value or `alt` if none.
 */
+var tryGetHash = hamt.tryGetHash = function (alt, hash, key, map) {
+    return maybe(map._lookup(0, hash, key), alt);
+};
+
+Node.prototype.tryGetHash = function (hash, key, alt) {
+    return tryGetHash(alt, hash, key, this);
+};
+
+/**
+    Lookup the value for `key` in `map` using internal hash function.
+    
+    @see `tryGetHash`
+*/
 var tryGet = hamt.tryGet = function (alt, key, map) {
-    return maybe(map._lookup(0, hash(key), key), alt);
+    return tryGetHash(alt, hash(key), key, map);
 };
 
 Node.prototype.tryGet = function (key, alt) {
@@ -426,9 +439,22 @@ Node.prototype.tryGet = function (key, alt) {
 };
 
 /**
-    Lookup the value for `key` in `map`.
+    Lookup the value for `key` in `map` using a custom `hash`.
     
     Returns the value or `undefined` if none.
+*/
+var getHash = hamt.getHash = function (hash, key, map) {
+    return tryGetHash(undefined, hash, key, map);
+};
+
+Node.prototype.getHash = function (hash, key, alt) {
+    return getHash(hash, key, this);
+};
+
+/**
+    Lookup the value for `key` in `map` using internal hash function.
+    
+    @see `get`
 */
 var get = hamt.get = function (key, map) {
     return tryGet(undefined, key, map);
@@ -439,20 +465,43 @@ Node.prototype.get = function (key, alt) {
 };
 
 /**
-    Does an entry exist for `key` in `map`?
+    Does an entry exist for `key` in `map`? Uses custom `hash`.
+*/
+var hasHash = hamt.has = function (hash, key, map) {
+    return !isNothing(tryGetHash(nothing, hash, key, map));
+};
+
+Node.prototype.hasHash = function (hash, key) {
+    return hasHash(hash, key, this);
+};
+
+/**
+    Does an entry exist for `key` in `map`? Uses internal hash function.
 */
 var has = hamt.has = function (key, map) {
-    return !isNothing(tryGet(nothing, key, map));
+    return hasHash(hash(key), key, map);
 };
 
 Node.prototype.has = function (key) {
     return has(key, this);
 };
 
+/**
+    Does `map` contain any elements?
+*/
+var isEmpty = hamt.isEmpty = function (map) {
+    return isEmptyNode(map);
+};
+
+Node.prototype.isEmpty = function () {
+    return isEmpty(this);
+};
+
 /* Updates
  ******************************************************************************/
 /**
-    Alter the value stored for `key` in `map` using function `f`.
+    Alter the value stored for `key` in `map` using function `f` using
+    custom hash.
     
     `f` is invoked with the current value for `k` if it exists,
     or no arguments if no such value exists. `modify` will always either
@@ -460,8 +509,22 @@ Node.prototype.has = function (key) {
     
     Returns a map with the modified value. Does not alter `map`.
 */
+var modifyHash = hamt.modifyHash = function (f, hash, key, map) {
+    return map._modify(0, f, hash, key);
+};
+
+Node.prototype.modifyHash = function (hash, key, f) {
+    return modifyHash(f, hash, key, this);
+};
+
+/**
+    Alter the value stored for `key` in `map` using function `f` using 
+    internal hash function.
+    
+    @see `modifyHash`
+*/
 var modify = hamt.modify = function (f, key, map) {
-    return map._modify(0, f, hash(key), key);
+    return modifyHash(f, hash(key), key, map);
 };
 
 Node.prototype.modify = function (key, f) {
@@ -469,12 +532,25 @@ Node.prototype.modify = function (key, f) {
 };
 
 /**
-    Store `value` for `key` in `map`.
+    Store `value` for `key` in `map` using custom `hash`.
 
     Returns a map with the modified value. Does not alter `map`.
 */
+var setHash = hamt.setHash = function (value, hash, key, map) {
+    return modifyHash(constant(value), hash, key, map);
+};
+
+Node.prototype.setHash = function (hash, key, value) {
+    return setHash(value, hash, key, this);
+};
+
+/**
+    Store `value` for `key` in `map` using internal hash function.
+      
+    @see `setHash`
+*/
 var set = hamt.set = function (value, key, map) {
-    return modify(constant(value), key, map);
+    return setHash(value, hash(key), key, map);
 };
 
 Node.prototype.set = function (key, value) {
@@ -487,8 +563,21 @@ Node.prototype.set = function (key, value) {
     Returns a map with the value removed. Does not alter `map`.
 */
 var del = constant(nothing);
-var remove = hamt.remove = function (key, map) {
+var removeHash = hamt.removeHash = function (hash, key, map) {
     return modify(del, key, map);
+};
+
+Node.prototype.removeHash = Node.prototype.deleteHash = function (hash, key) {
+    return removeHash(hash, key, this);
+};
+
+/**
+    Remove the entry for `key` in `map` using internal hash function.
+    
+    @see `removeHash`
+*/
+var remove = hamt.remove = function (key, map) {
+    return removeHash(hash(key), key, map);
 };
 
 Node.prototype.remove = Node.prototype.delete = function (key) {
@@ -520,7 +609,7 @@ ArrayNode.prototype.fold = function (f, z) {
     var children = this.children;
     for (var i = 0, len = children.length; i < len; ++i) {
         var c = children[i];
-        if (!isEmpty(c)) z = c instanceof Leaf ? f(z, c.value, c.key) : c.fold(f, z);
+        if (!isEmptyNode(c)) z = c instanceof Leaf ? f(z, c.value, c.key) : c.fold(f, z);
     }
     return z;
 };
@@ -535,7 +624,7 @@ ArrayNode.prototype.fold = function (f, z) {
     @param m HAMT
 */
 var fold = hamt.fold = function (f, z, m) {
-    return isEmpty(m) ? z : m.fold(f, z);
+    return isEmptyNode(m) ? z : m.fold(f, z);
 };
 
 Node.prototype.fold = function (f, z) {
