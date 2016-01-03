@@ -17,6 +17,11 @@ describe('values', () => {
         assert.sameMembers([5, 3], hamt.values(h1));
     });
     
+    it('should return duplicate values', () => {
+        const h = hamt.set('b', 3, hamt.set('a', 3, hamt.empty));
+        assert.deepEqual([3, 3], hamt.values(h));
+    });
+    
     it('return correct values while items are added', () => {
         const insert = [
             "n", "U", "p", "^", "h", "w", "W", "x", "S", "f", "H", "m", "g",
