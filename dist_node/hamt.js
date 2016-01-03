@@ -174,8 +174,7 @@ var Leaf = (function(hash0, key, value) {
         }
         var v = (target ? f(target.value) : f());
         return ((nothing === v) ? arraySpliceOut(i, list) : arrayUpdate(i, new(Leaf)(h, k, v), list));
-    }),
-    lookup;
+    });
 (Leaf.prototype.lookup = (function(_, _0, k) {
     var self = this;
     return ((k === self.key) ? self.value : nothing);
@@ -197,17 +196,17 @@ var Leaf = (function(hash0, key, value) {
         frag = ((h >>> shift) & mask),
         bit = (1 << frag),
         bitmap;
-    return ((self.mask & bit) ? lookup(self.children[((bitmap = self.mask), popcount((bitmap & (bit - 1))))], (
+    return ((self.mask & bit) ? self.children[((bitmap = self.mask), popcount((bitmap & (bit - 1))))].lookup((
         shift + 5), h, k) : nothing);
 }));
 (ArrayNode.prototype.lookup = (function(shift, h, k) {
     var self = this,
         frag = ((h >>> shift) & mask),
         child = self.children[frag];
-    return lookup(child, (shift + 5), h, k);
+    return child.lookup((shift + 5), h, k);
 }));
-(lookup = (function(n, shift, h, k) {
-    return ((((!n) || (n === empty)) || (n && n.__hamt_isEmpty)) ? nothing : n.lookup(shift, h, k));
+(empty.lookup = (function(_, _0, _1, _2) {
+    return nothing;
 }));
 var alter;
 (Leaf.prototype.modify = (function(shift, f, h, k) {
@@ -262,33 +261,31 @@ var alter;
         Leaf)(h, k, v))) : n.modify(shift, f, h, k));
 }));
 (tryGetHash = (function(alt, h, k, m) {
-    var val = ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? nothing : m.lookup(0, h, k));
+    var val = m.lookup(0, h, k);
     return ((nothing === val) ? alt : val);
 }));
 (tryGet = (function(alt, k, m) {
     var h = hash(k),
-        val = ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? nothing : m.lookup(0, h, k));
+        val = m.lookup(0, h, k);
     return ((nothing === val) ? alt : val);
 }));
 (getHash = (function(h, k, m) {
-    var val = ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? nothing : m.lookup(0, h, k));
+    var val = m.lookup(0, h, k);
     return ((nothing === val) ? null : val);
 }));
 (get = (function(k, m) {
     var h = hash(k),
-        val = ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? nothing : m.lookup(0, h, k));
+        val = m.lookup(0, h, k);
     return ((nothing === val) ? null : val);
 }));
 (hasHash = (function(h, k, m) {
-    var y;
-    return (!((y = ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? nothing : m.lookup(0, h, k))), (
-        nothing === y)));
+    var val, y;
+    return (!((val = m.lookup(0, h, k)), (y = ((nothing === val) ? nothing : val)), (nothing === y)));
 }));
 (has = (function(k, m) {
     var h = hash(k),
-        y;
-    return (!((y = ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? nothing : m.lookup(0, h, k))), (
-        nothing === y)));
+        val, y;
+    return (!((val = m.lookup(0, h, k)), (y = ((nothing === val) ? nothing : val)), (nothing === y)));
 }));
 (modifyHash = (function(h, k, f, m) {
     var v;

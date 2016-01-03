@@ -320,8 +320,6 @@ var updateCollisionList = \h list f k -> {
 
 /* Lookups
  ******************************************************************************/
-var lookup;
-
 /**
  * Leaf::get
  */
@@ -352,7 +350,7 @@ IndexedNode.prototype.lookup = \shift h k =self-> let
     bit = toBitmap frag
 in
     ?self.mask & bit
-        :lookup(self.children.(fromBitmap(self.mask, bit)), shift + SIZE, h, k)
+        :self.children.(fromBitmap(self.mask, bit)).lookup(shift + SIZE, h, k)
         :nothing;
 
 /**
@@ -362,12 +360,10 @@ ArrayNode.prototype.lookup = \shift h k =self-> let
     frag = hashFragment(shift, h),
     child = self.children.(frag)
 in
-    lookup(child, shift + SIZE, h, k);
+    child.lookup(shift + SIZE, h, k);
 
-lookup := \n shift h k ->
-    ?isEmpty n
-        :nothing
-        :n.lookup(shift, h, k);
+empty.lookup := \_ _ _ _ ->
+    nothing;
 
 /* Editing
  ******************************************************************************/
@@ -491,7 +487,7 @@ alter := \n shift f h k ->
  * @param m HAMT
  */
 tryGetHash := \alt h k m  ->
-    maybe(lookup(m, 0, h, k), alt);
+    maybe(m.lookup(0, h, k), alt);
 
 /**
  * Lookup a value using the internal `hash`.
@@ -527,7 +523,7 @@ get := tryGet @ null;
  * @param m HAMT
  */
 hasHash := \h k m ->
-    !isNothing lookup(m, 0, h, k);
+    !isNothing tryGetHash(nothing, h, k, m);
 
 /**
  * Check if a an entry exists using internal `hash`
