@@ -70,6 +70,8 @@ hamt.get('key', k) === 'value'
 h.get('no such key') === undefined
 ```
 
+----
+
 #### `hamt.tryGet(alt, key, map)`
 #### `map.tryGet(key, alt)`
 Same as `get` but returns `alt` if no value for `key` exists.
@@ -77,6 +79,8 @@ Same as `get` but returns `alt` if no value for `key` exists.
 * `alt` - Value returned if no such key exists in the map.
 * `key` - String key.
 * `map` - Hamt map.
+
+----
 
 #### `hamt.has(key, map)`
 #### `map.has(key)`
@@ -91,6 +95,8 @@ var h = hamt.empty.set('key', 'value');
 h.has('key') === true
 h.has('no such key') === false
 ```
+
+----
 
 #### `hamt.set(value, key, map)`
 #### `map.set(key, value)`
@@ -118,6 +124,8 @@ h.get('key') === 'value'
 h.get('key2') === 'value2'
 h.get('key3') === undefined
 ```
+
+----
 
 #### `hamt.modify(f, key, map)`
 #### `map.modify(key, f)`
@@ -152,6 +160,8 @@ h3.get('new') === 10
 h3.count() === 2
 ```
 
+----
+
 #### `hamt.remove(key, map)`
 #### `map.remove(key)`
 #### `map.delete(key)`
@@ -176,6 +186,8 @@ h2.get('b') === undefined
 h2.get('c') === 3
 ```
 
+----
+
 #### `hamt.count(map)`
 #### `map.count()`
 Get number of elements in `map`.
@@ -188,6 +200,8 @@ hamt.empty.count() === 0;
 hamt.empty.set('a', 3).count() === 1;
 hamt.empty.set('a', 3).set('b', 3).count() === 2;
 ```
+
+----
 
 #### `hamt.fold(f, z, map)`
 #### `map.fold(f, z)`
@@ -207,6 +221,8 @@ var max = hamt.fold.bind(null, (acc, value, key) =>
 max(hamt.empty.set('key', 3).set('key', 4)) === 4;
 ```
 
+----
+
 #### `hamt.pairs(map)`
 #### `map.pairs()`
 Get an array of key value pairs in `map`.
@@ -221,6 +237,8 @@ hamt.empty.set('a', 3).pairs() === [['a', 3]];
 hamt.empty.set('a', 3).set('b', 3).pairs() === [['a', 3], ['b', 3]];
 ```
 
+----
+
 #### `hamt.key(map)`
 #### `map.keys()`
 Get an array of all keys in `map`.
@@ -234,6 +252,8 @@ hamt.empty.keys() === [];
 hamt.empty.set('a', 3).keys() === ['a'];
 hamt.empty.set('a', 3).set('b', 3).keys() === ['a', 'b'];
 ```
+
+----
 
 #### `hamt.values(map)`
 #### `map.values()`
