@@ -170,7 +170,7 @@ hash := \str -> {
 /**
  * Empty node.
  */
-empty := null;
+empty := ({ __hamt_isEmpty: true });
 
 /**
  * Leaf holding a value.
@@ -222,7 +222,8 @@ var ArrayNode := function \count children =self-> {
 
 /* 
  ******************************************************************************/
-var isEmpty := (!);
+var isEmpty := \x ->
+    !x || x === empty || (x && x.__hamt_isEmpty);
 
 /**
  * Is `node` a leaf node?
@@ -636,7 +637,7 @@ ArrayNode.prototype.fold := \f z ={children}-> {
     var z1 = z;
     for (var i = 0, len = children.length; i < len; i = i + 1)
     with c = children.(i) in {
-        if (c)
+        if (!isEmpty c)
             z1 = ?c instanceof Leaf
                 :f(z1, c)
                 :c.fold(f, z1);

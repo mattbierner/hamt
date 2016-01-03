@@ -5,14 +5,11 @@
 define(["require", "exports"], (function(require, exports) {
     "use strict";
     var hash, empty, tryGetHash, tryGet, getHash, get, hasHash, has, setHash, set, modifyHash, modify,
-            removeHash, remove, fold, count, pairs, keys, values, __lnot = (function(x) {
-                return (!x);
+            removeHash, remove, fold, count, pairs, keys, values, constant = (function(x) {
+                return (function() {
+                    return x;
+                });
             }),
-        constant = (function(x) {
-            return (function() {
-                return x;
-            });
-        }),
         BUCKET_SIZE = Math.pow(2, 5),
         mask = (BUCKET_SIZE - 1),
         MAX_INDEX_NODE = (BUCKET_SIZE / 2),
@@ -97,7 +94,9 @@ define(["require", "exports"], (function(require, exports) {
         }
         return hash0;
     }));
-    (empty = null);
+    (empty = ({
+        __hamt_isEmpty: true
+    }));
     var Leaf = (function(hash0, key, value) {
         var self = this;
         (self.hash = hash0);
@@ -119,9 +118,11 @@ define(["require", "exports"], (function(require, exports) {
             (self.count = count);
             (self.children = children);
         }),
-        isEmpty = __lnot,
+        isEmpty = (function(x) {
+            return (((!x) || (x === empty)) || (x && x.__hamt_isEmpty));
+        }),
         isLeaf = (function(node) {
-            return (((node === null) || (node instanceof Leaf)) || (node instanceof Collision));
+            return (((node === empty) || (node instanceof Leaf)) || (node instanceof Collision));
         }),
         expand = (function(frag, child, bitmap, subNodes) {
             var bit = bitmap,
@@ -145,7 +146,7 @@ define(["require", "exports"], (function(require, exports) {
                 (i < len);
                 (i = (i + 1))) {
                 var elem = elements[i];
-                if (((i !== removed) && (!(!elem)))) {
+                if (((i !== removed) && (!(((!elem) || (elem === empty)) || (elem && elem.__hamt_isEmpty))))) {
                     children.push(elem);
                     (bitmap = (bitmap | (1 << i)));
                 }
@@ -208,12 +209,12 @@ define(["require", "exports"], (function(require, exports) {
         return lookup(child, (shift + 5), h, k);
     }));
     (lookup = (function(n, shift, h, k) {
-        return ((!n) ? nothing : n.lookup(shift, h, k));
+        return ((((!n) || (n === empty)) || (n && n.__hamt_isEmpty)) ? nothing : n.lookup(shift, h, k));
     }));
     var alter;
     (Leaf.prototype.modify = (function(shift, f, h, k) {
         var v, v0, self = this;
-        return ((k === self.key) ? ((v = f(self.value)), ((nothing === v) ? null : new(Leaf)(h, k, v))) :
+        return ((k === self.key) ? ((v = f(self.value)), ((nothing === v) ? empty : new(Leaf)(h, k, v))) :
             ((v0 = f()), ((nothing === v0) ? self : mergeLeaves(shift, self, new(Leaf)(h, k, v0)))));
     }));
     (Collision.prototype.modify = (function(shift, f, h, k) {
@@ -233,11 +234,11 @@ define(["require", "exports"], (function(require, exports) {
             bitmap = mask0,
             indx = popcount((bitmap & (bit - 1))),
             exists = (mask0 & bit),
-            child = alter((exists ? children[indx] : null), (shift + 5), f, h, k),
-            removed = (exists && (!child)),
-            added = ((!exists) && (!(!child))),
+            child = alter((exists ? children[indx] : empty), (shift + 5), f, h, k),
+            removed = (exists && (((!child) || (child === empty)) || (child && child.__hamt_isEmpty))),
+            added = ((!exists) && (!(((!child) || (child === empty)) || (child && child.__hamt_isEmpty)))),
             bitmap0 = (removed ? (mask0 & (~bit)) : (added ? (mask0 | bit) : mask0));
-        return ((!bitmap0) ? null : (removed ? (((children.length <= 2) && isLeaf(children[(indx ^ 1)])) ?
+        return ((!bitmap0) ? empty : (removed ? (((children.length <= 2) && isLeaf(children[(indx ^ 1)])) ?
                 children[(indx ^ 1)] : new(IndexedNode)(bitmap0, arraySpliceOut(indx, children))) :
             (added ? ((children.length >= MAX_INDEX_NODE) ? expand(frag, child, mask0, children) :
                 new(IndexedNode)(bitmap0, arraySpliceIn(indx, child, children))) : new(
@@ -250,72 +251,81 @@ define(["require", "exports"], (function(require, exports) {
             frag = ((h >>> shift) & mask),
             child = children[frag],
             newChild = alter(child, (shift + 5), f, h, k);
-        return (((!child) && (!(!newChild))) ? new(ArrayNode)((count + 1), arrayUpdate(frag, newChild,
-            children)) : (((!(!child)) && (!newChild)) ? (((count - 1) <= MIN_ARRAY_NODE) ? pack(
-                frag, children) : new(ArrayNode)((count - 1), arrayUpdate(frag, null, children))) :
+        return (((((!child) || (child === empty)) || (child && child.__hamt_isEmpty)) && (!(((!newChild) ||
+            (newChild === empty)) || (newChild && newChild.__hamt_isEmpty)))) ? new(ArrayNode)((
+            count + 1), arrayUpdate(frag, newChild, children)) : (((!(((!child) || (child === empty)) ||
+                (child && child.__hamt_isEmpty))) && (((!newChild) || (newChild === empty)) ||
+                (newChild && newChild.__hamt_isEmpty))) ? (((count - 1) <= MIN_ARRAY_NODE) ? pack(
+                frag, children) : new(ArrayNode)((count - 1), arrayUpdate(frag, empty, children))) :
             new(ArrayNode)(count, arrayUpdate(frag, newChild, children))));
     }));
     (alter = (function(n, shift, f, h, k) {
         var v;
-        return ((!n) ? ((v = f()), ((nothing === v) ? null : new(Leaf)(h, k, v))) : n.modify(shift, f,
-            h, k));
+        return ((((!n) || (n === empty)) || (n && n.__hamt_isEmpty)) ? ((v = f()), ((nothing === v) ?
+            empty : new(Leaf)(h, k, v))) : n.modify(shift, f, h, k));
     }));
     (tryGetHash = (function(alt, h, k, m) {
-        var val = ((!m) ? nothing : m.lookup(0, h, k));
+        var val = ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? nothing : m.lookup(0, h, k));
         return ((nothing === val) ? alt : val);
     }));
     (tryGet = (function(alt, k, m) {
         var h = hash(k),
-            val = ((!m) ? nothing : m.lookup(0, h, k));
+            val = ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? nothing : m.lookup(0, h, k));
         return ((nothing === val) ? alt : val);
     }));
     (getHash = (function(h, k, m) {
-        var val = ((!m) ? nothing : m.lookup(0, h, k));
+        var val = ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? nothing : m.lookup(0, h, k));
         return ((nothing === val) ? null : val);
     }));
     (get = (function(k, m) {
         var h = hash(k),
-            val = ((!m) ? nothing : m.lookup(0, h, k));
+            val = ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? nothing : m.lookup(0, h, k));
         return ((nothing === val) ? null : val);
     }));
     (hasHash = (function(h, k, m) {
         var y;
-        return (!((y = ((!m) ? nothing : m.lookup(0, h, k))), (nothing === y)));
+        return (!((y = ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? nothing : m.lookup(0, h,
+            k))), (nothing === y)));
     }));
     (has = (function(k, m) {
         var h = hash(k),
             y;
-        return (!((y = ((!m) ? nothing : m.lookup(0, h, k))), (nothing === y)));
+        return (!((y = ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? nothing : m.lookup(0, h,
+            k))), (nothing === y)));
     }));
     (modifyHash = (function(h, k, f, m) {
         var v;
-        return ((!m) ? ((v = f()), ((nothing === v) ? null : new(Leaf)(h, k, v))) : m.modify(0, f, h, k));
+        return ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? ((v = f()), ((nothing === v) ?
+            empty : new(Leaf)(h, k, v))) : m.modify(0, f, h, k));
     }));
     (modify = (function(k, f, m) {
         var h = hash(k),
             v;
-        return ((!m) ? ((v = f()), ((nothing === v) ? null : new(Leaf)(h, k, v))) : m.modify(0, f, h, k));
+        return ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? ((v = f()), ((nothing === v) ?
+            empty : new(Leaf)(h, k, v))) : m.modify(0, f, h, k));
     }));
     (setHash = (function(h, k, v, m) {
         var f = (function() {
             return v;
         });
-        return ((!m) ? ((nothing === v) ? null : new(Leaf)(h, k, v)) : m.modify(0, f, h, k));
+        return ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? ((nothing === v) ? empty : new(
+            Leaf)(h, k, v)) : m.modify(0, f, h, k));
     }));
     (set = (function(k, v, m) {
         var h = hash(k),
             f = (function() {
                 return v;
             });
-        return ((!m) ? ((nothing === v) ? null : new(Leaf)(h, k, v)) : m.modify(0, f, h, k));
+        return ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? ((nothing === v) ? empty : new(
+            Leaf)(h, k, v)) : m.modify(0, f, h, k));
     }));
     var del = (function() {
         return nothing;
     });
     (removeHash = (function(h, k, m) {
         var f = del;
-        return ((!m) ? ((nothing === nothing) ? null : new(Leaf)(h, k, nothing)) : m.modify(0, del, h,
-            k));
+        return ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? ((nothing === nothing) ? empty :
+            new(Leaf)(h, k, nothing)) : m.modify(0, del, h, k));
     }));
     (remove = (function(k, m) {
         return removeHash(hash(k), k, m);
@@ -349,20 +359,20 @@ define(["require", "exports"], (function(require, exports) {
             (i < len);
             (i = (i + 1))) {
             var c = children[i];
-            if (c) {
+            if ((!(((!c) || (c === empty)) || (c && c.__hamt_isEmpty)))) {
                 (z1 = ((c instanceof Leaf) ? f(z1, c) : c.fold(f, z1)));
             }
         }
         return z1;
     }));
     (fold = (function(f, z, m) {
-        return ((!m) ? z : m.fold(f, z));
+        return ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? z : m.fold(f, z));
     }));
     var f = (function(y) {
         return (1 + y);
     });
     (count = (function(m) {
-        return ((!m) ? 0 : m.fold(f, 0));
+        return ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? 0 : m.fold(f, 0));
     }));
     var build = (function(p, __o) {
         var key = __o["key"],
@@ -372,7 +382,7 @@ define(["require", "exports"], (function(require, exports) {
     });
     (pairs = (function(m) {
         var z = [];
-        return ((!m) ? z : m.fold(build, z));
+        return ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? z : m.fold(build, z));
     }));
     var build0 = (function(p, __o) {
         var key = __o["key"];
@@ -381,7 +391,7 @@ define(["require", "exports"], (function(require, exports) {
     });
     (keys = (function(m) {
         var z = [];
-        return ((!m) ? z : m.fold(build0, z));
+        return ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? z : m.fold(build0, z));
     }));
     var build1 = (function(p, __o) {
         var value = __o["value"];
@@ -390,7 +400,7 @@ define(["require", "exports"], (function(require, exports) {
     });
     (values = (function(m) {
         var z = [];
-        return ((!m) ? z : m.fold(build1, z));
+        return ((((!m) || (m === empty)) || (m && m.__hamt_isEmpty)) ? z : m.fold(build1, z));
     }));
     (exports["hash"] = hash);
     (exports["empty"] = empty);
