@@ -54,6 +54,8 @@ HAMTs are is persistent, so operations always return a modified copy of the map 
 #### `hamt.empty`
 An empty map.
 
+----
+
 #### `hamt.get(key, map)`
 #### `map.get(key, [alt])`
 Lookup the value for `key` in `map`. 
