@@ -46,13 +46,49 @@ require(['hamt'], function(hamt) {
 ```
 
 
-## API
+# Usage
 Hamt provides a method chaining interface and free functions for updating and querying the map. Both APIs provide identical functionality, but the free functions are designed for binding and composition, while the method chaining API is more legible and more Javascripty.
 
 HAMTs are is persistent, so operations always return a modified copy of the map instead of alterting the original.
 
+## Custom Hash Values
+Most update and lookup methods have two versions: one that takes a key and uses an internal hash function to compute its hash, and a version that takes a custom computed hash value.
+
+
+``` javascript
+var h = hamt.empty.set('key', 'value');
+var h2 = hamt.empty.setHash(5, 'key', 'value');
+
+
+h.get('key') === 'value'
+h2.getHash(5, 'key') === 'value'
+```
+
+If using a custom hash, you must only use the `*Hash` varient of functions to interact with the map. 
+
+
+``` javascript
+// Because the internally computed hash of `key` is not `5`, a direct
+// look will not work.
+h2.get('key') === undefined
+
+// You must use `getHash` with the same hash value originally passed in.
+h2.getHash(5, 'key') === 'value'
+```
+
+
+## API
+
 #### `hamt.empty`
 An empty map.
+
+----
+
+#### `hamt.isEmpty(map)`
+#### `map.isEmpty()`
+Is a map empty? 
+
+This is the correct method to check if a map is empty. Direct comparisons to `hamt.empty` may fail if multiple versions of the library are used.
 
 ----
 
@@ -71,6 +107,12 @@ hamt.get('key', k) === 'value'
 
 h.get('no such key') === undefined
 ```
+
+----
+
+#### `hamt.getHash(hash, key, map)`
+#### `map.getHash(hash, key, [alt])`
+Same as `get` but uses a custom hash value.
 
 ----
 
@@ -100,6 +142,12 @@ h.has('no such key') === false
 
 ----
 
+#### `hamt.tryGetHash(alt, hash, key, map)`
+#### `map.tryGetHash(hash, key, alt)`
+Same as `tryGet` but uses a custom hash value.
+
+----
+
 #### `hamt.set(value, key, map)`
 #### `map.set(key, value)`
 Set the value for `key` in `map`. 
@@ -126,6 +174,12 @@ h.get('key') === 'value'
 h.get('key2') === 'value2'
 h.get('key3') === undefined
 ```
+
+----
+
+#### `hamt.setHash(value, hash, key, map)`
+#### `map.setHash(hash, key, value)`
+Same as `set` but uses a custom hash value.
 
 ----
 
@@ -164,6 +218,12 @@ h3.count() === 2
 
 ----
 
+#### `hamt.modifyHash(f, hash, key, map)`
+#### `map.modifyHash(hash, key, f)`
+Same as `modify` but uses a custom hash value.
+
+----
+
 #### `hamt.remove(key, map)`
 #### `map.remove(key)`
 #### `map.delete(key)`
@@ -187,6 +247,13 @@ h2.get('a') === 1
 h2.get('b') === undefined
 h2.get('c') === 3
 ```
+
+----
+
+#### `hamt.removeHash(hash, key, map)`
+#### `map.removeHash(hash, key)`
+#### `map.deleteHash(hash, key)`
+Same as `remove` but uses a custom hash value.
 
 ----
 
