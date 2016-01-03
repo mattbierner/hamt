@@ -47,9 +47,9 @@ require(['hamt'], function(hamt) {
 
 
 ## API
-Hamt provides a method chaining interface and a set of free functions to update and query map data structure. Both APIs provide identical functionality, byt the free functions use an argument order designed for binding and composition, while the method chaining api is more legible and more Javascripty.
+Hamt provides a method chaining interface and free functions for updating and querying the map. Both APIs provide identical functionality, but the free functions are designed for binding and composition, while the method chaining API is more legible and more Javascripty.
 
-The map is persistent, so operations always return a modified copy of the map instead of alterting the original.
+HAMTs are is persistent, so operations always return a modified copy of the map instead of alterting the original.
 
 #### `hamt.empty`
 An empty map.
