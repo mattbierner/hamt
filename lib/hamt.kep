@@ -3,38 +3,7 @@
  * 
  * Code based on: https://github.com/exclipy/pdata
  */
-package(
-    hash
-    
-    empty
-
-// Queries
-    tryGetHash
-    tryGet
-    
-    getHash
-    get
-    
-    hasHash
-    has
-    
-// Single Update
-    setHash
-    set
-    
-    modifyHash
-    modify
-    
-    removeHash
-    remove
-    
-// Aggregate
-    fold
-    count
-    pairs
-    keys
-    values)
-{
+var hamt = {};
 
 var constant := \x -> \ -> x;
 
@@ -69,14 +38,14 @@ var maybe := function\val, def -> {
  * 
  * Taken from: http://jsperf.com/hamming-weight
  */
-var popcount = function\x -> let
-    x = x - ((x >> 1) & 0x55555555),
-    x = (x & 0x33333333) + ((x >> 2) & 0x33333333),
-    x = (x + (x >> 4)) & 0x0f0f0f0f,
-    x = x + (x >> 8),
-    x = x + (x >> 16)
-in
-    (x & 0x7f);
+var popcount = function\_x -> {
+    var x = _x - ((_x >> 1) & 0x55555555);
+    x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
+    x = (x + (x >> 4)) & 0x0f0f0f0f;
+    x = x + (x >> 8);
+    x = x + (x >> 16);
+    return (x & 0x7f);
+};
 
 var hashFragment := function\shift, h  -> {
     return (h >>> shift) & mask;
@@ -153,24 +122,26 @@ var arraySpliceIn = \at v arr -> {
  * Based on:
  * http://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
  */
-hash := \str -> {
+var hash = \str -> {
     if (typeof str === 'number')
         return str;
     
     var hash = 0;
-    for (var i = 0, len = str.length; i < len; i = i + 1)
-    with c = str.charCodeAt(i) in {
+    for (var i = 0, len = str.length; i < len; i = i + 1) {
+        var c = str.charCodeAt(i);
         hash = (((hash << 5) - hash) + c) | 0;
     }
     return hash;
 };
+hamt.hash = hash;
 
 /* Node Structures
  ******************************************************************************/
 /**
  * Empty node.
  */
-empty := ({ __hamt_isEmpty: true });
+var empty = ({ __hamt_isEmpty: true });
+hamt.empty = empty;
 
 /**
  * Leaf holding a value.
@@ -282,19 +253,16 @@ var pack = function\removed, elements -> {
  * @param n1 Node.
  * @param n2 Node.
  */
-var mergeLeaves = function\shift, n1, n2 -> {
-    var h1 = n1.hash;
-    var h2 = n2.hash;
-    return ?h1 === h2
-        :new Collision(h1, [n2, n1])
-        :let
-            subH1 = hashFragment(shift, h1),
-            subH2 = hashFragment(shift, h2)
-        in
-            new IndexedNode(toBitmap subH1 | toBitmap subH2,
-                ?subH1 === subH2
-                    :[mergeLeaves(shift + SIZE, n1, n2)]
-                    :?subH1 < subH2 : [n1, n2] : [n2, n1]);
+var mergeLeaves = function\shift, h1, n1, h2, n2 -> {
+    if (h1 === h2)
+        return new Collision(h1, [n2, n1]);
+    
+    var subH1 = hashFragment(shift, h1);
+    var subH2 = hashFragment(shift, h2);
+    return new IndexedNode(toBitmap subH1 | toBitmap subH2,
+        ?subH1 === subH2
+            :[mergeLeaves(shift + SIZE, h1, n1, h2, n2)]
+            :?subH1 < subH2 : [n1, n2] : [n2, n1]);
 };
 
 /**
@@ -375,30 +343,30 @@ empty.lookup = \ -> nothing;
  * Leaf::modify
  */
 Leaf.prototype.modify = function\shift, f, h, k =self-> {
-    return ?k === self.key
-        :let v = f(self.value) in
-            ?isNothing v
-                :empty
-                :new Leaf(h, k, v)
-    :let v = f() in
-        ?isNothing v
-            :self
-            :mergeLeaves(shift, self, new Leaf(h, k, v));
+   if (k === self.key) {
+        var v = f(self.value);
+        return ?isNothing v : empty : new Leaf(h, k, v);
+    }
+    var v = f();
+    return ?isNothing v
+        :self
+        :mergeLeaves(shift, self.hash, self, h, new Leaf(h, k, v));
 };
 
 /**
  * Collision::modify
  */
-Collision.prototype.modify = function\shift, f, h, k =self#{hash children}-> {
-    return ?h === hash
-        :let list = updateCollisionList(hash, children, f, k) in
-            ?list.length > 1
-                :new Collision(hash, list)
-                :list.(0) // collapse single element collision list
-    :let v = f() in
-        ?isNothing v
-            :self
-            :mergeLeaves(shift, self, new Leaf(h, k, v));
+Collision.prototype.modify = function\shift, f, h, k =self-> {
+    if (h === self.hash) {
+        var list = updateCollisionList(self.hash, self.children, f, k);
+        return ?list.length > 1
+            :new Collision(self.hash, list)
+            :list.(0); // collapse single element collision list
+    }
+    var v = f();
+    return ?isNothing v
+        :self
+        :mergeLeaves(shift, self.hash, self, h, new Leaf(h, k, v));
 };
 
 /**
@@ -412,8 +380,8 @@ IndexedNode.prototype.modify = function\shift, f, h, k ={mask children}-> {
     
     var child = (?exists : children.(indx) : empty).modify(shift + SIZE, f, h, k);
     
-    var removed = exists && isEmpty child;
-    var added = !exists && !isEmpty child;
+    var removed = exists && isEmpty(child);
+    var added = !exists && !isEmpty(child);
     
     var bitmap = ?removed
         :mask & ~bit
@@ -447,18 +415,20 @@ IndexedNode.prototype.modify = function\shift, f, h, k ={mask children}-> {
 /**
  * ArrayNode::modify
  */
-ArrayNode.prototype.modify = function\shift f h k ={count children}-> {
+ArrayNode.prototype.modify = function\shift f h k =self-> {
+    var count = self.count;
+    var children = self.children;
     var frag = hashFragment(shift, h);
     var child = children.(frag);
     var newChild = (child || empty).modify(shift + SIZE, f, h, k);
     
-    return ?isEmpty child && !isEmpty newChild
+    return ?isEmpty(child) && !isEmpty(newChild)
         // add
         :new ArrayNode(
             count + 1,
             arrayUpdate(frag, newChild, children))
     
-    :?!isEmpty child && isEmpty newChild
+    :?!isEmpty(child) && isEmpty(newChild)
         // remove
         :?count - 1 <= MIN_ARRAY_NODE
             :pack(frag, children)
@@ -489,16 +459,20 @@ empty.modify := \_ f h k -> {
  * @param k Key.
  * @param m HAMT
  */
-tryGetHash := \alt h k m  ->
+var tryGetHash = \alt, h, k, m  ->
     maybe(m.lookup(0, h, k), alt);
+
+hamt.tryGetHash = tryGetHash;
 
 /**
  * Lookup a value using the internal `hash`.
  * 
  * @see getHash
  */
-tryGet := \alt k m ->
+var tryGet = \alt, k, m ->
     tryGetHash(alt, hash k, k, m);
+
+hamt.tryGet = tryGet;
 
 /**
  * Lookup a value.
@@ -509,16 +483,20 @@ tryGet := \alt k m ->
  * @param k Key.
  * @param m HAMT
  */
-getHash := \h, k, m ->
+var getHash = \h, k, m ->
     tryGetHash(null, h, k, m);
+
+hamt.getHash = getHash;
 
 /**
  * Lookup a value using the internal `hash`.
  * 
  * @see getHash
  */
-get := \k, m ->
+var get = \k, m ->
     tryGet(null, k, m);
+
+hamt.get = get;
 
 /**
  * Does an entry exist?
@@ -527,16 +505,20 @@ get := \k, m ->
  * @param k Key.
  * @param m HAMT
  */
-hasHash := \h k m ->
+var hasHash = \h, k, m ->
     !isNothing(tryGetHash(nothing, h, k, m));
+
+hamt.hasHash = hasHash;
 
 /**
  * Check if a an entry exists using internal `hash`
  * 
  * @see hasHash
  */
-has := \k m ->
-    hasHash(hash k, k, m);
+var has = \k, m ->
+    hasHash(hash(k), k, m);
+
+hamt.has = has;
 
 /* Single Updates
  ******************************************************************************/
@@ -550,16 +532,21 @@ has := \k m ->
  * @param f Function mapping current value to new value.
  * @param m HAMT
  */
-modifyHash := \h k f m ->
+var modifyHash = \h, k, f, m ->
     m.modify(0, f, h, k);
+
+hamt.modifyHash = modifyHash;
+
 
 /**
  * Store a value using the internal `hash` function to calculate the hash from `key`
  * 
  * @see modifyHash
  */
-modify := \k f m ->
-    modifyHash(hash k, k, f, m);
+var modify = \k, f, m ->
+    modifyHash(hash(k), k, f, m);
+
+hamt.modify = modify;
 
 /**
  * Store a value with an explicit hash.
@@ -569,16 +556,20 @@ modify := \k f m ->
  * @param v Value to store.
  * @param m HAMT
  */
-setHash := \h k v m ->
-    modifyHash(h, k, constant v, m);
+var setHash = \h, k, v, m ->
+    modifyHash(h, k, constant(v), m);
+
+hamt.setHash = setHash;
 
 /**
  * Store a value using the internal `hash` function to calculate the hash from `key`
  * 
  * @see setHash
  */
-set := \k v m ->
-    setHash(hash k, k, v, m);
+var set = \k, v, m ->
+    setHash(hash(k), k, v, m);
+
+hamt.set = set;
 
 /**
  * Delete a value with an explicit hash.
@@ -587,17 +578,21 @@ set := \k v m ->
  * @param h 32 bit hash.
  * @param k Key.
  */
-removeHash := let del = constant nothing in
-    \h k m ->
-        modifyHash(h, k, del, m);
+var del = constant(nothing);
+var removeHash = \h, k, m ->
+    modifyHash(h, k, del, m);
+
+hamt.removeHash = removeHash;
 
 /**
  * Delete a value using the internal `hash` function to calculate the hash from `key`
  * 
  * @see removeHash
  */
-remove := \k m ->
+var remove = \k m ->
     removeHash(hash k, k, m);
+
+hamt.remove = remove;
 
 /* Fold
  ******************************************************************************/
@@ -610,18 +605,19 @@ Leaf.prototype.fold = \f z =self->
 /**
  * Collision::fold
  */
-Collision.prototype.fold = \f z ={children}->
-    children.reduce(f, z);
+Collision.prototype.fold = \f z =self->
+    self.children.reduce(f, z);
 
 /**
  * IndexedNode::fold
  * 
  * `self.children.reduce(fold@f, z)`
  */
-IndexedNode.prototype.fold := \f z ={children}-> {
+IndexedNode.prototype.fold := \f z =self-> {
     var z1 = z;
-    for (var i = 0, len = children.length; i < len; i = i + 1)
-    with c = children.(i) in {
+    var children = self.children;
+    for (var i = 0, len = children.length; i < len; i = i + 1) {
+        var c = children.(i);
         z1 = ?c instanceof Leaf
             :f(z1, c)
             :c.fold(f, z1);
@@ -634,11 +630,12 @@ IndexedNode.prototype.fold := \f z ={children}-> {
  * 
  * `self.children.reduce(fold@f, z)`
  */
-ArrayNode.prototype.fold := \f z ={children}-> {
+ArrayNode.prototype.fold := \f z =self-> {
     var z1 = z;
-    for (var i = 0, len = children.length; i < len; i = i + 1)
-    with c = children.(i) in {
-        if (!isEmpty c)
+    var children = self.children;
+    for (var i = 0, len = children.length; i < len; i = i + 1) {
+        var c = children.(i);
+        if (!isEmpty(c))
             z1 = ?c instanceof Leaf
                 :f(z1, c)
                 :c.fold(f, z1);
@@ -655,10 +652,12 @@ ArrayNode.prototype.fold := \f z ={children}-> {
  * @param z Starting value.
  * @param m HAMT
  */
-fold := \f, z, m ->
+var fold = \f, z, m ->
     ?isEmpty m
         :z
         :m.fold(f, z);
+
+hamt.fold = fold;
 
 /* Aggregate
  ******************************************************************************/
@@ -668,8 +667,10 @@ fold := \f, z, m ->
  * @param m HAMT.
  */
 var inc = \x -> x + 1;
-count = \m ->
+var count = \m ->
     fold(inc, 0, m);
+
+hamt.count = count;
 
 /**
  * Get array of all key value pairs as arrays of [key, value].
@@ -679,8 +680,11 @@ count = \m ->
  * @param m HAMT.
  */
 var buildPairs = \p, x -> { p.push(x); return p; };
-pairs = \m ->
+var pairs = \m ->
     fold(buildPairs, [], m);
+
+hamt.pairs = pairs;
+
 
 /**
  * Get array of all keys.
@@ -690,8 +694,11 @@ pairs = \m ->
  * @param m HAMT.
  */
 var buildKeys = \p, {key} -> { p.push(key); return p; };
-keys = \m ->
+var keys = \m ->
     fold(buildKeys, [], m);
+
+hamt.keys = keys;
+
 
 /**
  * Get array of all values.
@@ -701,7 +708,15 @@ keys = \m ->
  * @param m HAMT.
  */
 var buildValues = \p, {value} -> { p.push(value); return p; };
-values = \m ->
+var values = \m ->
     fold(buildValues, [], m);
-    
+
+hamt.values = values;
+
+static module;
+static define;
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = hamt;
+} else if (typeof define == 'function' && define.amd) {
+    define('hamt', [], \ -> hamt);
 }
