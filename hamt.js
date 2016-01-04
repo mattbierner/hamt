@@ -592,23 +592,82 @@ Map.prototype.remove = Map.prototype.delete = function (key) {
     return remove(key, this);
 };
 
+/* Traversal
+ ******************************************************************************/
+var Cont = function Cont(node, f, k) {
+    return {
+        node: node,
+        f: f,
+        k: k,
+        __hamt_cont: true
+    };
+};
+
+var trampoline = function trampoline(k) {
+    while (k && k.__hamt_cont) {
+        k = lazyVisit(k.node, k.f, k.k);
+    }return k;
+};
+
+var app = hamt.app = function (k) {
+    return k();
+};
+
+var lazyVisitChildren = function lazyVisitChildren(len, children, i, f, k) {
+    for (; i < len; ++i) {
+        var child = children[i];
+        if (child && !isEmptyNode(child)) return Cont(child, f, function () {
+            return lazyVisitChildren(len, children, i + 1, f, k);
+        });
+    }
+    return app(k);
+};
+
+var lazyVisit = function lazyVisit(node, f, k) {
+    switch (node.type) {
+        case LEAF:
+            return f(node.value, node.key, k);
+
+        case COLLISION:
+        case ARRAY:
+        case INDEX:
+            var children = node.children;
+            return lazyVisitChildren(children.length, children, 0, f, k);
+
+        default:
+            return app(k);
+    }
+};
+
+hamt.traverse = function (f, map) {
+    return trampoline(lazyVisit(map.root, function (value, key, k) {
+        var i = true;
+        var z = function z() {
+            return i ? app(k) : trampoline(app(k));
+        };
+        var x = f(value, key, z);
+        i = false;
+        return x;
+    }, function () {
+        return 0;
+    }));
+};
+
 /* Fold
  ******************************************************************************/
 Leaf.prototype._fold = function (f, z) {
     return f(z, this.value, this.key);
 };
 
-Collision.prototype._fold = function (f, z) {
-    return this.children.reduce(function (p, c) {
-        return f(p, c.value, c.key);
-    }, z);
+empty._fold = function (f, z) {
+    return z;
 };
 
-IndexedNode.prototype._fold = function (f, z) {
+Collision.prototype._fold = IndexedNode.prototype._fold = function (f, z) {
     var children = this.children;
     for (var i = 0, len = children.length; i < len; ++i) {
         var c = children[i];
-        z = c instanceof Leaf ? f(z, c.value, c.key) : c._fold(f, z);
+        z = c.type === LEAF ? f(z, c.value, c.key) : c._fold(f, z);
     }
     return z;
 };
@@ -617,7 +676,7 @@ ArrayNode.prototype._fold = function (f, z) {
     var children = this.children;
     for (var i = 0, len = children.length; i < len; ++i) {
         var c = children[i];
-        if (c && c._fold) z = c instanceof Leaf ? f(z, c.value, c.key) : c._fold(f, z);
+        if (c && !isEmptyNode(c)) z = c.type === LEAF ? f(z, c.value, c.key) : c._fold(f, z);
     }
     return z;
 };
@@ -631,8 +690,11 @@ ArrayNode.prototype._fold = function (f, z) {
     @param z Starting value.
     @param m HAMT
 */
+var noop = function noop() {
+    return 0;
+};
 var fold = hamt.fold = function (f, z, m) {
-    return isEmptyNode(m.root) ? z : m.root._fold(f, z);
+    return m.root._fold(f, z);
 };
 
 Map.prototype.fold = function (f, z) {
