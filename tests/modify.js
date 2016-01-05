@@ -4,7 +4,7 @@ const assert = require('chai').assert;
 
 describe('modify', () => {
     it('should update entry in single map', () => {
-        const h = hamt.set(3, 'a', hamt.empty);
+        const h = hamt.set('a', 3, hamt.empty);
         const h1 = hamt.modify(x => x * 2, 'a', h);
 
         assert.strictEqual(6, hamt.get('a', h1));

@@ -544,12 +544,12 @@ Map.prototype.modify = function (key, f) {
 
     Returns a map with the modified value. Does not alter `map`.
 */
-var setHash = hamt.setHash = function (value, hash, key, map) {
+var setHash = hamt.setHash = function (hash, key, value, map) {
     return modifyHash(constant(value), hash, key, map);
 };
 
 Map.prototype.setHash = function (hash, key, value) {
-    return setHash(value, hash, key, this);
+    return setHash(hash, key, value, this);
 };
 
 /**
@@ -557,12 +557,12 @@ Map.prototype.setHash = function (hash, key, value) {
       
     @see `setHash`
 */
-var set = hamt.set = function (value, key, map) {
-    return setHash(value, hash(key), key, map);
+var set = hamt.set = function (key, value, map) {
+    return setHash(hash(key), key, value, map);
 };
 
 Map.prototype.set = function (key, value) {
-    return set(value, key, this);
+    return set(key, value, this);
 };
 
 /**
@@ -710,8 +710,8 @@ hamt.forEach = function (f, m) {
     }, m);
 };
 
-Map.prototype.forEach = function (f, z) {
-    return fold(f, z, this);
+Map.prototype.forEach = function (f) {
+    return forEach(f, this);
 };
 
 /* Aggregate

@@ -4,8 +4,8 @@ const assert = require('chai').assert;
 
 describe('set', () => {
     it('should add entry to empty map', () => {
-        const h = hamt.set(3, 'a', hamt.empty);
-        assert.strictEqual(3, hamt.get('a', h));
+        assert.strictEqual(3, hamt.set('a', 3, hamt.empty).get('a'));
+        assert.strictEqual(3, hamt.empty.set('a', 3).get('a'));
     });
     
     it('should add entry to existing map', () => {
