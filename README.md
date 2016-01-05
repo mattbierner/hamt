@@ -327,7 +327,7 @@ Array.from(hamt.empty.set('a', 3).set('b', 3).entries()) === [['a', 3], ['b', 3]
 
 You can also iterated directly over a map with ES6:
 
-```
+```javascript
 const h = hamt.empty.set('a', 3).set('b', 3);
 
 for (let [key, value] of h)
@@ -347,9 +347,9 @@ Get an Javascript iterator to all keys in `map`.
 Order is not guaranteed.
 
 ``` javascript
-hamt.empty.keys() === [];
-hamt.empty.set('a', 3).keys() === ['a'];
-hamt.empty.set('a', 3).set('b', 3).keys() === ['a', 'b'];
+Array.from(hamt.empty.keys()) === [];
+Array.from(hamt.empty.set('a', 3).keys()) === ['a'];
+Array.from(hamt.empty.set('a', 3).set('b', 3).keys()) === ['a', 'b'];
 ```
 
 ----
