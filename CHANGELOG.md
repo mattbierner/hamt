@@ -1,5 +1,8 @@
 # ChangeLog #
 
+## 2.0.1 - January 4, 2016
+* Fixed `forEach`.
+
 ## 2.0.0 - January 4, 2016
 Focusing on API compatability with ES6 `Map` when possible.
 * Lazily iterated over maps with `for (let [key, value] of map) { ... }`.

@@ -678,7 +678,7 @@ var buildKeys = function buildKeys(x) {
     return x.key;
 };
 var keys = hamt.keys = function (map) {
-    return visit(map || undefined, buildKeys);
+    return visit(map, buildKeys);
 };
 
 Map.prototype.keys = function () {
@@ -757,7 +757,7 @@ Map.prototype.fold = function (f, z) {
 var forEach = hamt.forEach = function (f, map) {
     return fold(function (_, value, key) {
         return f(value, key, map);
-    }, map);
+    }, null, map);
 };
 
 Map.prototype.forEach = function (f) {
