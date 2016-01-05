@@ -594,63 +594,61 @@ Map.prototype.remove = Map.prototype.delete = function (key) {
 
 /* Traversal
  ******************************************************************************/
-var Cont = function Cont(node, f, k) {
-    return {
-        node: node,
-        f: f,
-        k: k,
-        __hamt_cont: true
-    };
+var appk = function appk(k) {
+    return k && lazyVisitChildren(k.len, k.children, k.i, k.k);
 };
 
-var trampoline = function trampoline(k) {
-    while (k && k.__hamt_cont) {
-        k = lazyVisit(k.node, k.f, k.k);
-    }return k;
-};
-
-var app = hamt.app = function (k) {
-    return k();
-};
-
-var lazyVisitChildren = function lazyVisitChildren(len, children, i, f, k) {
-    for (; i < len; ++i) {
-        var child = children[i];
-        if (child && !isEmptyNode(child)) return Cont(child, f, function () {
-            return lazyVisitChildren(len, children, i + 1, f, k);
-        });
+/**
+    Recursively visit all values stored in an array of nodes lazily.
+*/
+var lazyVisitChildren = function lazyVisitChildren(len, children, i, k) {
+    while (i < len) {
+        var child = children[i++];
+        if (child && !isEmptyNode(child)) return lazyVisit(child, { len: len, children: children, i: i, k: k });
     }
-    return app(k);
+    return appk(k);
 };
 
-var lazyVisit = function lazyVisit(node, f, k) {
+/**
+    Recursively visit all values stored in `node` lazily.
+*/
+var lazyVisit = function lazyVisit(node, k) {
     switch (node.type) {
         case LEAF:
-            return f(node.value, node.key, k);
+            return { value: [node.key, node.value], rest: k };
 
         case COLLISION:
         case ARRAY:
         case INDEX:
             var children = node.children;
-            return lazyVisitChildren(children.length, children, 0, f, k);
+            return lazyVisitChildren(children.length, children, 0, k);
 
         default:
-            return app(k);
+            return appk(k);
     }
 };
 
-hamt.traverse = function (f, map) {
-    return trampoline(lazyVisit(map.root, function (value, key, k) {
-        var i = true;
-        var z = function z() {
-            return i ? app(k) : trampoline(app(k));
-        };
-        var x = f(value, key, z);
-        i = false;
-        return x;
-    }, function () {
-        return 0;
-    }));
+var DONE = { done: true };
+
+/**
+    Get a Javascsript iterator of `map`.
+    
+    Iterates over `[key, value]` arrays.
+*/
+var entries = hamt.entries = function (map) {
+    var v = lazyVisit(map.root);
+    return {
+        next: function next() {
+            if (!v) return DONE;
+            var v0 = v;
+            v = appk(v.rest);
+            return v0;
+        }
+    };
+};
+
+Map.prototype.entries = Map.prototype[Symbol.iterator] = function () {
+    return entries(this);
 };
 
 /* Fold
@@ -686,18 +684,33 @@ ArrayNode.prototype._fold = function (f, z) {
 
     Order of nodes is not guaranteed.
     
-    @param f Function mapping previous value and key value object to new value.
+    @param f Function mapping accumulated value, value, and key to new value.
     @param z Starting value.
     @param m HAMT
 */
-var noop = function noop() {
-    return 0;
-};
 var fold = hamt.fold = function (f, z, m) {
     return m.root._fold(f, z);
 };
 
 Map.prototype.fold = function (f, z) {
+    return fold(f, z, this);
+};
+
+/**
+    Visit every entry in the map, aggregating data.
+
+    Order of nodes is not guaranteed.
+    
+    @param f Function invoked with value and key
+    @param m HAMT
+*/
+hamt.forEach = function (f, m) {
+    return fold(function (_, value, key) {
+        return f(value, key);
+    }, m);
+};
+
+Map.prototype.forEach = function (f, z) {
     return fold(f, z, this);
 };
 

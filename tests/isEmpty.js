@@ -42,8 +42,7 @@ describe('isEmpty', () => {
             
         var h2 = h1.deleteHash(0, 'a');
         var h3 = h2.deleteHash(0, 'b');
-        console.log(h3.keys());
-
+        
         assert.isFalse(hamt.isEmpty(h1));
         assert.isFalse(hamt.isEmpty(h2));
         assert.isTrue(hamt.isEmpty(h3));
