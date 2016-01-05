@@ -7,10 +7,10 @@ The [hash array mapped trie][hash-array-mapped-trie] is a [persistent][persisten
 ```javascript
 var hamt = require('hamt');
 
-// Keys can be any string.
+// Keys can be any string and the map can store any value.
 var h = hamt.empty
     .set('key', 'value')
-    .set('object', )
+    .set('object', { prop: 1 })
     .set('falsy', null);
 
 h.size === 0
@@ -53,7 +53,7 @@ var h = hamt.empty.set('key', 'value');
 ``` javascript
 requirejs.config({
     paths: {
-        'hamt': 'hamt'
+        'hamt': 'path/to/hamt/lib/hamt'
     }
 });
 
@@ -302,8 +302,8 @@ Fold over the map, accumulating result value.
 Order is not guaranteed.
 
 ``` javascript
-var max = hamt.fold.bind(null, (acc, value, key) =>
-    Math.max(acc, value),
+var max = hamt.fold.bind(null,
+    (acc, value, key) => Math.max(acc, value),
     0);
 
 max(hamt.empty.set('key', 3).set('key', 4)) === 4;
