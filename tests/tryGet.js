@@ -5,7 +5,7 @@ const assert = require('chai').assert;
 describe('tryGet', () => {
     it('should return default for empty map', () => {
         assert.strictEqual(10, hamt.tryGet(10, 'a', hamt.empty));
-        assert.strictEqual(10, hamt.empty.tryGet('a', 10));
+        assert.strictEqual(10, hamt.empty.tryGet(10, 'a'));
 
         assert.strictEqual(10, hamt.tryGet(10, 'b', hamt.empty));
         assert.strictEqual(false, hamt.tryGet(false, 'a', hamt.empty));
@@ -39,8 +39,8 @@ describe('tryGet', () => {
         
         for (let i = 0; i < insert.length; ++i) {
             const x = insert[i];
-            assert.strictEqual(x, h.tryGetHash(i, x, null));
-            assert.strictEqual(null, h.tryGetHash(i, x + x, null));
+            assert.strictEqual(x, h.tryGetHash(null, i, x));
+            assert.strictEqual(null, h.tryGetHash(null, i, x + x));
         }
     });
 });

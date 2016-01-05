@@ -4,12 +4,12 @@ const assert = require('chai').assert;
 
 describe('keys', () => {
     it('should return empty for empty map', () => {
-        assert.deepEqual([], hamt.keys(hamt.empty));
+        assert.deepEqual([], Array.from(hamt.keys(hamt.empty)));
     });
     
     it('should return single key for single element map', () => {
-        assert.deepEqual(['a'], hamt.keys(hamt.empty.set('a', 5)));
-        assert.deepEqual(['b'], hamt.empty.set('b', 5).keys());
+        assert.deepEqual(['a'], Array.from(hamt.keys(hamt.empty.set('a', 5))));
+        assert.deepEqual(['b'], Array.from(hamt.empty.set('b', 5).keys()));
     });
     
     it('should return all keys for collision', () => {
@@ -17,7 +17,7 @@ describe('keys', () => {
             .setHash(0, 'a', 3)
             .setHash(0, 'b', 5);
             
-        assert.sameMembers(['a', 'b'], hamt.keys(h1));
+        assert.sameMembers(['a', 'b'], Array.from(h1.keys()));
     });
     
     it('return correct keys while items are added', () => {
@@ -33,7 +33,7 @@ describe('keys', () => {
             h = h.set(x, x);
         });
     
-        assert.sameMembers(insert, hamt.keys(h));
+        assert.sameMembers(insert, Array.from(hamt.keys(h)));
     });
 });
 

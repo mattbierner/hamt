@@ -1,5 +1,16 @@
 # ChangeLog #
 
+## 2.0.0 - January 4, 2016
+Focusing on API compatability with ES6 `Map` when possible.
+* Lazily iterated over maps with `for (let [key, value] of map) { ... }`.
+* Added `entries` which returns a Javascript iterators to key value pairs.
+    * `pairs` which did the same but built an array has been removed.
+* `keys` and `values` both now return Javascript iterators instead of arrays to match the `Map` API.
+    * Use `Array.from` if you really need get an array.
+* Swapped the order of `hamt.set` back to `hamt.set(key, value, map)`. Sorry :(
+* Added `.size` property to maps.
+* Added `hamt.forEach(f, map)` and `map.forEach(f)` where f is invoked with `(value, key, map)`
+
 ## 1.1.1 - January 3, 2016
 * Perf improvements.
 
@@ -12,12 +23,12 @@
 ## 1.0.0 - January 3, 2016
 * Rewrite in ES6.
 * Combined node and amd packages.
-** Both now live in the top level `hamt.js` and are generated from `lib/hamt.js`.
+	* Both now live in the top level `hamt.js` and are generated from `lib/hamt.js`.
 * Added chaining interface.
-** `hamt.empty.set('a', 1).set('b', 3)...`
+	* `hamt.empty.set('a', 1).set('b', 3)...`
 * `hamt.get` returns undefined instead of `null` if lookup fails.
 * Switched argument order on `hamt.modify` and `hamt.set` to better support binding.
-** Chain versions of these method have old argument order.
+	* Chain versions of these method have old argument order.
 * Removed `*Hash` functions since these expose too many implementation details and can easily produce undesirable behavior if not used carefully. 
 * Changed `fold` to call `f` with `(accumulated, value, key)` instead of `(accumulated, {value, key})`.
 * Aliased `map.delete` to `map.remove`.
@@ -51,7 +62,7 @@
 ## 0.1.2 - Feb 24, 2014
 * Better collapsing of index nodes.
 * ~1.2x performance boost overall.
-** Now faster than hashtrie.
+	* Now faster than hashtrie.
 
 ## 0.1.1 - Feb 21, 2014
 * ~15x boost to folds.

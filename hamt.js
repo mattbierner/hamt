@@ -135,10 +135,6 @@ var hash = hamt.hash = function (str) {
 
 /* Node Structures
  ******************************************************************************/
-function Map(root) {
-    this.root = root;
-};
-
 var LEAF = 1;
 var COLLISION = 2;
 var INDEX = 3;
@@ -412,6 +408,12 @@ empty._modify = function (_, f, h, k) {
     return v === nothing ? empty : new Leaf(h, k, v);
 };
 
+/*
+ ******************************************************************************/
+function Map(root) {
+    this.root = root;
+};
+
 /* Queries
  ******************************************************************************/
 /**
@@ -424,7 +426,7 @@ var tryGetHash = hamt.tryGetHash = function (alt, hash, key, map) {
     return v === nothing ? alt : v;
 };
 
-Map.prototype.tryGetHash = function (hash, key, alt) {
+Map.prototype.tryGetHash = function (alt, hash, key) {
     return tryGetHash(alt, hash, key, this);
 };
 
@@ -437,7 +439,7 @@ var tryGet = hamt.tryGet = function (alt, key, map) {
     return tryGetHash(alt, hash(key), key, map);
 };
 
-Map.prototype.tryGet = function (key, alt) {
+Map.prototype.tryGet = function (alt, key) {
     return tryGet(alt, key, this);
 };
 
@@ -450,7 +452,7 @@ var getHash = hamt.getHash = function (hash, key, map) {
     return tryGetHash(undefined, hash, key, map);
 };
 
-Map.prototype.getHash = function (hash, key, alt) {
+Map.prototype.getHash = function (hash, key) {
     return getHash(hash, key, this);
 };
 
@@ -595,16 +597,18 @@ Map.prototype.remove = Map.prototype.delete = function (key) {
 /* Traversal
  ******************************************************************************/
 var appk = function appk(k) {
-    return k && lazyVisitChildren(k.len, k.children, k.i, k.k);
+    return k && lazyVisitChildren(k.len, k.children, k.i, k.f, k.k);
 };
 
 /**
     Recursively visit all values stored in an array of nodes lazily.
 */
-var lazyVisitChildren = function lazyVisitChildren(len, children, i, k) {
+var lazyVisitChildren = function lazyVisitChildren(len, children, i, f, k) {
     while (i < len) {
         var child = children[i++];
-        if (child && !isEmptyNode(child)) return lazyVisit(child, { len: len, children: children, i: i, k: k });
+        if (child && !isEmptyNode(child)) return lazyVisit(child, f, {
+            len: len, children: children, i: i, f: f, k: k
+        });
     }
     return appk(k);
 };
@@ -612,16 +616,16 @@ var lazyVisitChildren = function lazyVisitChildren(len, children, i, k) {
 /**
     Recursively visit all values stored in `node` lazily.
 */
-var lazyVisit = function lazyVisit(node, k) {
+var lazyVisit = function lazyVisit(node, f, k) {
     switch (node.type) {
         case LEAF:
-            return { value: [node.key, node.value], rest: k };
+            return { value: f(node), rest: k };
 
         case COLLISION:
         case ARRAY:
         case INDEX:
             var children = node.children;
-            return lazyVisitChildren(children.length, children, 0, k);
+            return lazyVisitChildren(children.length, children, 0, f, k);
 
         default:
             return appk(k);
@@ -630,25 +634,71 @@ var lazyVisit = function lazyVisit(node, k) {
 
 var DONE = { done: true };
 
+function MapIterator(v) {
+    this.v = v;
+};
+
+MapIterator.prototype.next = function () {
+    if (!this.v) return DONE;
+    var v0 = this.v;
+    this.v = appk(v0.rest);
+    return v0;
+};
+
+MapIterator.prototype[Symbol.iterator] = function () {
+    return this;
+};
+
+var visit = function visit(map, f) {
+    return new MapIterator(lazyVisit(map.root, f));
+};
+
 /**
     Get a Javascsript iterator of `map`.
     
     Iterates over `[key, value]` arrays.
 */
+var buildPairs = function buildPairs(x) {
+    return [x.key, x.value];
+};
 var entries = hamt.entries = function (map) {
-    var v = lazyVisit(map.root);
-    return {
-        next: function next() {
-            if (!v) return DONE;
-            var v0 = v;
-            v = appk(v.rest);
-            return v0;
-        }
-    };
+    return visit(map, buildPairs);
 };
 
 Map.prototype.entries = Map.prototype[Symbol.iterator] = function () {
     return entries(this);
+};
+
+/**
+    Get array of all keys in `map`.
+
+    Order is not guaranteed.
+*/
+var buildKeys = function buildKeys(x) {
+    return x.key;
+};
+var keys = hamt.keys = function (map) {
+    return visit(map || undefined, buildKeys);
+};
+
+Map.prototype.keys = function () {
+    return keys(this);
+};
+
+/**
+    Get array of all values in `map`.
+
+    Order is not guaranteed, duplicates are preserved.
+*/
+var buildValues = function buildValues(x) {
+    return x.value;
+};
+var values = hamt.values = Map.prototype.values = function (map) {
+    return visit(map, buildValues);
+};
+
+Map.prototype.values = function () {
+    return values(this);
 };
 
 /* Fold
@@ -702,12 +752,12 @@ Map.prototype.fold = function (f, z) {
     Order of nodes is not guaranteed.
     
     @param f Function invoked with value and key
-    @param m HAMT
+    @param map HAMT
 */
-hamt.forEach = function (f, m) {
+var forEach = hamt.forEach = function (f, map) {
     return fold(function (_, value, key) {
-        return f(value, key);
-    }, m);
+        return f(value, key, map);
+    }, map);
 };
 
 Map.prototype.forEach = function (f) {
@@ -730,53 +780,9 @@ Map.prototype.count = function () {
     return count(this);
 };
 
-/**
-    Get array of all key value pairs as arrays of [key, value] in `map`.
- 
-    Order is not guaranteed.
-*/
-var buildPairs = function buildPairs(p, value, key) {
-    p.push([key, value]);return p;
-};
-var pairs = hamt.pairs = function (map) {
-    return fold(buildPairs, [], m);
-};
-
-Map.prototype.pairs = function () {
-    return count(this);
-};
-
-/**
-    Get array of all keys in `map`.
-
-    Order is not guaranteed.
-*/
-var buildKeys = function buildKeys(p, _, key) {
-    p.push(key);return p;
-};
-var keys = hamt.keys = function (m) {
-    return fold(buildKeys, [], m);
-};
-
-Map.prototype.keys = function () {
-    return keys(this);
-};
-
-/**
-    Get array of all values in `map`.
-
-    Order is not guaranteed, duplicates are preserved.
-*/
-var buildValues = function buildValues(p, value) {
-    p.push(value);return p;
-};
-var values = hamt.values = function (m) {
-    return fold(buildValues, [], m);
-};
-
-Map.prototype.values = function () {
-    return values(this);
-};
+Object.defineProperty(Map.prototype, 'size', {
+    get: Map.prototype.count
+});
 
 /* Export
  ******************************************************************************/

@@ -1,18 +1,36 @@
-# HAMT
+# Hamt
 Javascript Hash Array Mapped Trie
 
 ### Overview
-The [hash array mapped trie][hash-array-mapped-trie] is a [persistent][persistent]
-map data structure with good lookup and update performance. This
-Javascript implementation is based on [exclipy's Haskell port][pdata].
+The [hash array mapped trie][hash-array-mapped-trie] is a [persistent][persistent] map data structure with good lookup and update performance. This Javascript implementation is based on [exclipy's Haskell port][pdata]. It provides an API the is close to [ES6's `Map`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map), but for an immutable map.
 
-[Benchmarks show][benchmarks] against other Javascript hash trie implementations show
-that this is the overall fastest persistent hash trie implementation for Javascript.
+```javascript
+var hamt = require('hamt');
 
-[HAMT+][hamt_plus] is a fork of this library with a nearly identical API, that
-supports for transient mutation and custom key types. HAMT+ is [slightly slower][benchmarks]
-for most operations however.
+// Keys can be any string.
+var h = hamt.empty
+    .set('key', 'value')
+    .set('object', )
+    .set('falsy', null);
 
+h.size === 0
+h.has('key') === true
+h.has('falsy') === true
+h.get('key') === 'value'
+
+// Iteration
+for (let [key, value] of h)
+    console.log(key, value);
+
+Array.from(h.values()) === [{ prop: 1 }, 'value'], null];
+
+// The data structure is fully immutable
+var h2 = h.delete('key');
+h2.get('key') === undefined
+h.get('key') === 'value'
+```
+
+[Benchmarks show][benchmarks] show that this library performs well, even as the size of the map becomes very large.
 
 ## Install
 Source code is in `hamt.js` and generated from `lib/hamt.js`. The library supports node, AMD, and use as a global.
@@ -25,7 +43,7 @@ $ npm install hamt
 ``` javascript
 var hamt = require('hamt');
 
-var h = hamt.empty.set('key', 'value', h);
+var h = hamt.empty.set('key', 'value');
 
 ...
 ```
@@ -40,7 +58,7 @@ requirejs.config({
 });
 
 require(['hamt'], function(hamt) {
-    var h = hamt.empty.set('key', 'value', h);
+    var h = hamt.empty.set('key', 'value');
     ...
 });
 ```
@@ -88,12 +106,12 @@ An empty map.
 #### `map.isEmpty()`
 Is a map empty? 
 
-This is the correct method to check if a map is empty. Direct comparisons to `hamt.empty` may fail if multiple versions of the library are used.
+This is the correct method to check if a map is empty. Direct comparisons to `hamt.empty` will not work.
 
 ----
 
 #### `hamt.get(key, map)`
-#### `map.get(key, [alt])`
+#### `map.get(key)`
 Lookup the value for `key` in `map`. 
 
 * `key` - String key.
@@ -111,13 +129,13 @@ h.get('no such key') === undefined
 ----
 
 #### `hamt.getHash(hash, key, map)`
-#### `map.getHash(hash, key, [alt])`
+#### `map.getHash(hash, key)`
 Same as `get` but uses a custom hash value.
 
 ----
 
 #### `hamt.tryGet(alt, key, map)`
-#### `map.tryGet(key, alt)`
+#### `map.tryGet(alt, key)`
 Same as `get` but returns `alt` if no value for `key` exists.
 
 * `alt` - Value returned if no such key exists in the map.
@@ -143,12 +161,12 @@ h.has('no such key') === false
 ----
 
 #### `hamt.tryGetHash(alt, hash, key, map)`
-#### `map.tryGetHash(hash, key, alt)`
+#### `map.tryGetHash(alt, hash, key)`
 Same as `tryGet` but uses a custom hash value.
 
 ----
 
-#### `hamt.set(value, key, map)`
+#### `hamt.set(key, value, map)`
 #### `map.set(key, value)`
 Set the value for `key` in `map`. 
 
@@ -177,7 +195,7 @@ h.get('key3') === undefined
 
 ----
 
-#### `hamt.setHash(value, hash, key, map)`
+#### `hamt.setHash(hash, key, value, map)`
 #### `map.setHash(hash, key, value)`
 Same as `set` but uses a custom hash value.
 
@@ -259,6 +277,7 @@ Same as `remove` but uses a custom hash value.
 
 #### `hamt.count(map)`
 #### `map.count()`
+#### `map.size`
 Get number of elements in `map`.
 
 * `map` - Hamt map.
@@ -292,25 +311,36 @@ max(hamt.empty.set('key', 3).set('key', 4)) === 4;
 
 ----
 
-#### `hamt.pairs(map)`
-#### `map.pairs()`
-Get an array of key value pairs in `map`.
+#### `hamt.entries(map)`
+#### `map.entries()`
+Get an Javascript iterator to all key value pairs in `map`.
 
 * `map` - Hamt map.
 
 Order is not guaranteed.
 
 ``` javascript
-hamt.empty.pairs() === [];
-hamt.empty.set('a', 3).pairs() === [['a', 3]];
-hamt.empty.set('a', 3).set('b', 3).pairs() === [['a', 3], ['b', 3]];
+Array.from(hamt.empty.entries()) === [];
+Array.from(hamt.empty.set('a', 3).entries()) === [['a', 3]];
+Array.from(hamt.empty.set('a', 3).set('b', 3).entries()) === [['a', 3], ['b', 3]];
+```
+
+You can also iterated directly over a map with ES6:
+
+```
+const h = hamt.empty.set('a', 3).set('b', 3);
+
+for (let [key, value] of h)
+    ...
+    
+Array.from(h) === [['a', 3], ['b', 3]];
 ```
 
 ----
 
 #### `hamt.key(map)`
 #### `map.keys()`
-Get an array of all keys in `map`.
+Get an Javascript iterator to all keys in `map`.
 
 * `map` - Hamt map.
 
@@ -326,17 +356,28 @@ hamt.empty.set('a', 3).set('b', 3).keys() === ['a', 'b'];
 
 #### `hamt.values(map)`
 #### `map.values()`
-Get an array of all values in `map`.
+Get an Javascript iterator to all values in `map`.
 
 * `map` - Hamt map.
 
 Order is not guaranteed. Duplicate entries may exist.
 
 ``` javascript
-hamt.empty.values() === [];
-hamt.empty.set('a', 3).values() === [3];
-hamt.empty.set('a', 3).values('b', 3).values() === [3, 3];
+Array.from(hamt.empty.values()) === [];
+Array.from(hamt.empty.set('a', 3).values()) === [3];
+Array.from(hamt.empty.set('a', 3).values('b', 3).values()) === [3, 3];
 ```
+
+----
+
+#### `hamt.forEach(f, map)`
+#### `map.forEach(f)`
+Invoke function `f` for each value in the map.
+
+* `f` - Function invoked with `(value, key, map)`. 
+* `map` - Hamt map.
+
+Order is not guaranteed.
 
 
 [hamt_plus]: https://github.com/mattbierner/hamt_plus

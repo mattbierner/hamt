@@ -4,12 +4,12 @@ const assert = require('chai').assert;
 
 describe('values', () => {
     it('should return empty for empty map', () => {
-        assert.deepEqual([], hamt.values(hamt.empty));
+        assert.deepEqual([], Array.from(hamt.values(hamt.empty)));
     });
     
     it('should return single key for single element map', () => {
-        assert.deepEqual([3], hamt.values(hamt.empty.set('a', 3)));
-        assert.deepEqual([5], hamt.empty.set('b', 5).values());
+        assert.deepEqual([3], Array.from(hamt.values(hamt.empty.set('a', 3))));
+        assert.deepEqual([5], Array.from(hamt.empty.set('b', 5).values()));
     });
     
     it('should return all values for collision', () => {
@@ -17,12 +17,12 @@ describe('values', () => {
             .setHash(0, 'a', 3)
             .setHash(0, 'b', 5);
         
-        assert.sameMembers([5, 3], hamt.values(h1));
+        assert.sameMembers([5, 3], Array.from(h1.values()));
     });
     
     it('should return duplicate values', () => {
         const h = hamt.empty.set('b', 3).set('a', 3);
-        assert.deepEqual([3, 3], hamt.values(h));
+        assert.deepEqual([3, 3], Array.from(hamt.values(h)));
     });
     
     it('return correct values while items are added', () => {
@@ -38,7 +38,7 @@ describe('values', () => {
             h = h.set(x, x);
         });
     
-        assert.sameMembers(insert, hamt.values(h));
+        assert.sameMembers(insert, Array.from(hamt.values(h)));
     });
 });
 

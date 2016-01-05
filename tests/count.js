@@ -5,11 +5,14 @@ const assert = require('chai').assert;
 describe('count', () => {
     it('should return zero for empty map', () => {
         assert.strictEqual(0, hamt.count(hamt.empty));
+        assert.strictEqual(0, hamt.empty.count());
+        assert.strictEqual(0, hamt.empty.size);
     });
     
     it('should return 1 for single element map', () => {
         assert.strictEqual(1, hamt.count(hamt.empty.set('a', 5)));
         assert.strictEqual(1, hamt.empty.set('b', 5).count());
+        assert.strictEqual(1, hamt.empty.set('b', 5).size);
     });
     
     it('should handle counts on collisions correctly', () => {

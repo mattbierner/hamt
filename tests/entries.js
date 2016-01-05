@@ -15,13 +15,16 @@ describe('entries', () => {
     });
     
     it('should visit single child', () => {
-        const it = hamt.entries(hamt.empty.set('a', 3));
+        const h = hamt.empty.set('a', 3);
+        const it = hamt.entries(h);
         let v = it.next();
         
         assert.deepEqual(['a', 3], v.value);
         assert.notOk(v.done);
         v = it.next();
         assert.ok(v.done);
+        
+        assert.deepEqual([['a', 3]], Array.from(h));
     });
     
     it('should visit all children', () => {
