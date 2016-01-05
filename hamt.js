@@ -5,13 +5,7 @@
 	
 	Code based on: https://github.com/exclipy/pdata
 */
-var hamt = {};
-
-var constant = function constant(x) {
-    return function () {
-        return x;
-    };
-};
+var hamt = {}; // export
 
 /* Configuration
  ******************************************************************************/
@@ -25,9 +19,32 @@ var MAX_INDEX_NODE = BUCKET_SIZE / 2;
 
 var MIN_ARRAY_NODE = BUCKET_SIZE / 4;
 
-/* Nothing
+/* 
  ******************************************************************************/
 var nothing = {};
+
+var constant = function constant(x) {
+    return function () {
+        return x;
+    };
+};
+
+/**
+	Get 32 bit hash of string.
+	
+	Based on:
+	http://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
+*/
+var hash = hamt.hash = function (str) {
+    if (typeof str === 'number') return str;
+
+    var hash = 0;
+    for (var i = 0, len = str.length; i < len; ++i) {
+        var c = str.charCodeAt(i);
+        hash = (hash << 5) - hash + c | 0;
+    }
+    return hash;
+};
 
 /* Bit Ops
  ******************************************************************************/
@@ -104,33 +121,14 @@ var arraySpliceOut = function arraySpliceOut(at, arr) {
 var arraySpliceIn = function arraySpliceIn(at, v, arr) {
     var len = arr.length;
     var out = new Array(len + 1);
-    var i = 0;
-    var g = 0;
+    var i = 0,
+        g = 0;
     while (i < at) {
         out[g++] = arr[i++];
     }out[g++] = v;
     while (i < len) {
         out[g++] = arr[i++];
     }return out;
-};
-
-/* 
- ******************************************************************************/
-/**
-	Get 32 bit hash of string.
-	
-	Based on:
-	http://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
-*/
-var hash = hamt.hash = function (str) {
-    if (typeof str === 'number') return str;
-
-    var hash = 0;
-    for (var i = 0, len = str.length; i < len; ++i) {
-        var c = str.charCodeAt(i);
-        hash = (hash << 5) - hash + c | 0;
-    }
-    return hash;
 };
 
 /* Node Structures
@@ -220,7 +218,6 @@ var isLeaf = function isLeaf(node) {
 */
 var expand = function expand(frag, child, bitmap, subNodes) {
     var arr = [];
-
     var bit = bitmap;
     var count = 0;
     for (var i = 0; bit; ++i) {
@@ -462,7 +459,7 @@ Map.prototype.getHash = function (hash, key) {
     @see `get`
 */
 var get = hamt.get = function (key, map) {
-    return tryGet(undefined, key, map);
+    return tryGetHash(undefined, hash(key), key, map);
 };
 
 Map.prototype.get = function (key, alt) {
@@ -596,6 +593,9 @@ Map.prototype.remove = Map.prototype.delete = function (key) {
 
 /* Traversal
  ******************************************************************************/
+/**
+    Apply a continuation.
+*/
 var appk = function appk(k) {
     return k && lazyVisitChildren(k[0], k[1], k[2], k[3], k[4]);
 };
@@ -632,6 +632,9 @@ var lazyVisit = function lazyVisit(node, f, k) {
 
 var DONE = { done: true };
 
+/**
+    Javascript iterator over a map.
+*/
 function MapIterator(v) {
     this.v = v;
 };
@@ -647,6 +650,9 @@ MapIterator.prototype[Symbol.iterator] = function () {
     return this;
 };
 
+/**
+    Lazily visit each value in map with function `f`.
+*/
 var visit = function visit(map, f) {
     return new MapIterator(lazyVisit(map.root, f));
 };
