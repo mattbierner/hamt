@@ -307,55 +307,6 @@ var updateCollisionList = function updateCollisionList(h, list, f, k) {
     return newValue === nothing ? list : arrayUpdate(len, Leaf(h, k, newValue), list);
 };
 
-/* Lookups
- ******************************************************************************/
-var _lookup = function _lookup(node, h, k) {
-    var shift = 0;
-    while (true) {
-        switch (node.type) {
-            case LEAF:
-                {
-                    return k === node.key ? node.value : nothing;
-                }
-            case COLLISION:
-                {
-                    if (h === node.hash) {
-                        var children = node.children;
-                        for (var i = 0, len = children.length; i < len; ++i) {
-                            var child = children[i];
-                            if (k === child.key) return child.value;
-                        }
-                    }
-                    return nothing;
-                }
-            case INDEX:
-                {
-                    var frag = hashFragment(shift, h);
-                    var bit = toBitmap(frag);
-                    if (node.mask & bit) {
-                        node = node.children[fromBitmap(node.mask, bit)];
-                        shift += SIZE;
-                        break;
-                    } else {
-                        return nothing;
-                    }
-                }
-            case ARRAY:
-                {
-                    node = node.children[hashFragment(shift, h)];
-                    if (node) {
-                        shift += SIZE;
-                        break;
-                    } else {
-                        return nothing;
-                    }
-                }
-            default:
-                return nothing;
-        }
-    }
-};
-
 /* Editing
  ******************************************************************************/
 var Leaf__modify = function Leaf__modify(shift, f, h, k) {
@@ -448,8 +399,49 @@ function Map(root) {
     Returns the value or `alt` if none.
 */
 var tryGetHash = hamt.tryGetHash = function (alt, hash, key, map) {
-    var v = _lookup(map._root, hash, key);
-    return v === nothing ? alt : v;
+    var node = map._root;
+    var shift = 0;
+    while (true) {
+        switch (node.type) {
+            case LEAF:
+                {
+                    return key === node.key ? node.value : alt;
+                }
+            case COLLISION:
+                {
+                    if (hash === node.hash) {
+                        var children = node.children;
+                        for (var i = 0, len = children.length; i < len; ++i) {
+                            var child = children[i];
+                            if (key === child.key) return child.value;
+                        }
+                    }
+                    return alt;
+                }
+            case INDEX:
+                {
+                    var frag = hashFragment(shift, hash);
+                    var bit = toBitmap(frag);
+                    if (node.mask & bit) {
+                        node = node.children[fromBitmap(node.mask, bit)];
+                        shift += SIZE;
+                        break;
+                    }
+                    return alt;
+                }
+            case ARRAY:
+                {
+                    node = node.children[hashFragment(shift, hash)];
+                    if (node) {
+                        shift += SIZE;
+                        break;
+                    }
+                    return alt;
+                }
+            default:
+                return alt;
+        }
+    }
 };
 
 Map.prototype.tryGetHash = function (alt, hash, key) {

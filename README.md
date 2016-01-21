@@ -2,7 +2,7 @@
 Javascript Hash Array Mapped Trie
 
 ### Overview
-The [hash array mapped trie][hash-array-mapped-trie] is a [persistent][persistent] map data structure with good lookup and update performance. This library provides an immutable map with an API that resembles [ES6's `Map`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map), but for an immutable map.
+The [hash array mapped trie][hash-array-mapped-trie] is a [persistent][persistent] map data structure with good lookup and update performance. This library provides an immutable map with an API that resembles [ES6's `Map`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map).
 
 ```javascript
 var hamt = require('hamt');
