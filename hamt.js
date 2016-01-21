@@ -735,16 +735,6 @@ Map.prototype.values = function () {
 /* Fold
  ******************************************************************************/
 /**
-    Append all non-empty elements from `src` onto `dest`.
-*/
-var pushAll = function pushAll(dest, src) {
-    for (var i = 0, len = src.length; i < len; ++i) {
-        var x = src[i];
-        if (x) dest.push(x);
-    }
-};
-
-/**
     Visit every entry in the map, aggregating data.
 
     Order of nodes is not guaranteed.
@@ -754,19 +744,17 @@ var pushAll = function pushAll(dest, src) {
     @param m HAMT
 */
 var fold = hamt.fold = function (f, z, m) {
-    var toVisit = [m._root];
-    while (toVisit.length) {
-        var child = toVisit.pop();
-        switch (child.type) {
-            case LEAF:
-                z = f(z, child.value, child.key);
-                break;
+    var node = m._root;
+    if (node.type === LEAF) return f(z, node.value, node.key);
 
-            case ARRAY:
-            case COLLISION:
-            case INDEX:
-                pushAll(toVisit, child.children);
-                break;
+    var toVisit = [node.children];
+    var children = undefined;
+    while (children = toVisit.pop()) {
+        for (var i = 0, len = children.length; i < len;) {
+            var child = children[i++];
+            if (child && child.type) {
+                if (child.type === LEAF) z = f(z, child.value, child.key);else toVisit.push(child.children);
+            }
         }
     }
     return z;
