@@ -1,5 +1,7 @@
 'use strict';
 
+function _typeof(obj) { return obj && typeof Symbol !== "undefined" && obj.constructor === Symbol ? "symbol" : typeof obj; }
+
 /**
 	@fileOverview Hash Array Mapped Trie.
 	
@@ -36,7 +38,9 @@ var constant = function constant(x) {
 	http://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
 */
 var hash = hamt.hash = function (str) {
-    if (typeof str === 'number') return str;
+    var type = typeof str === 'undefined' ? 'undefined' : _typeof(str);
+    if (type === 'number') return str;
+    if (type !== 'string') str += '';
 
     var hash = 0;
     for (var i = 0, len = str.length; i < len; ++i) {
@@ -744,10 +748,10 @@ Map.prototype.values = function () {
     @param m HAMT
 */
 var fold = hamt.fold = function (f, z, m) {
-    var node = m._root;
-    if (node.type === LEAF) return f(z, node.value, node.key);
+    var root = m._root;
+    if (root.type === LEAF) return f(z, root.value, root.key);
 
-    var toVisit = [node.children];
+    var toVisit = [root.children];
     var children = undefined;
     while (children = toVisit.pop()) {
         for (var i = 0, len = children.length; i < len;) {

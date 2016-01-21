@@ -2,7 +2,7 @@
 Javascript Hash Array Mapped Trie
 
 ### Overview
-The [hash array mapped trie][hash-array-mapped-trie] is a [persistent][persistent] map data structure with good lookup and update performance. This Javascript implementation is based on [exclipy's Haskell port][pdata]. It provides an API the is close to [ES6's `Map`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map), but for an immutable map.
+The [hash array mapped trie][hash-array-mapped-trie] is a [persistent][persistent] map data structure with good lookup and update performance. This library provides an immutable map with an API that resembles [ES6's `Map`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map), but for an immutable map.
 
 ```javascript
 var hamt = require('hamt');
@@ -82,7 +82,7 @@ h.get('key') === 'value'
 h2.getHash(5, 'key') === 'value'
 ```
 
-If using a custom hash, you must only use the `*Hash` varient of functions to interact with the map. 
+If using a custom hash, you must only use the `*Hash` varient of functions to interact with the map.
 
 
 ``` javascript
@@ -104,7 +104,7 @@ An empty map.
 
 #### `hamt.isEmpty(map)`
 #### `map.isEmpty()`
-Is a map empty? 
+Is a map empty?
 
 This is the correct method to check if a map is empty. Direct comparisons to `hamt.empty` will not work.
 
@@ -112,7 +112,7 @@ This is the correct method to check if a map is empty. Direct comparisons to `ha
 
 #### `hamt.get(key, map)`
 #### `map.get(key)`
-Lookup the value for `key` in `map`. 
+Lookup the value for `key` in `map`.
 
 * `key` - String key.
 * `map` - Hamt map.
@@ -168,7 +168,7 @@ Same as `tryGet` but uses a custom hash value.
 
 #### `hamt.set(key, value, map)`
 #### `map.set(key, value)`
-Set the value for `key` in `map`. 
+Set the value for `key` in `map`.
 
 * `value` - Value to store. Hamt supports all value types, including: literals, objects, falsy values, null, and undefined. Keep in mind that only the map data structure itself is guaranteed to be immutable. Using immutable values is recommended but not required.
 * `key` - String key.
@@ -203,9 +203,9 @@ Same as `set` but uses a custom hash value.
 
 #### `hamt.modify(f, key, map)`
 #### `map.modify(key, f)`
-Update the value stored for `key` in `map`. 
+Update the value stored for `key` in `map`.
 
-* `f` - Function mapping the current value to the new value. If no current value exists, the function is invoked with no arguments. 
+* `f` - Function mapping the current value to the new value. If no current value exists, the function is invoked with no arguments.
 * `key` - String key.
 * `map` - Hamt map.
 
@@ -214,7 +214,7 @@ Returns a new map with the modified value. Does not alter the original.
 ``` javascript
 var h = hamt.empty
     .set('i', 2);
-    
+
 var h2 = h.modify('i', x => x * x);
 
 h2.get('i') === 4
@@ -245,7 +245,7 @@ Same as `modify` but uses a custom hash value.
 #### `hamt.remove(key, map)`
 #### `map.remove(key)`
 #### `map.delete(key)`
-Remove `key` from `map`. 
+Remove `key` from `map`.
 
 * `key` - String key.
 * `map` - Hamt map.
@@ -257,7 +257,7 @@ var h = hamt.empty
     .set('a', 1)
     .set('b', 2)
     .set('c', 3);
-    
+
 var h2 = h.remove('b');
 
 h2.count() === 2;
@@ -332,7 +332,7 @@ const h = hamt.empty.set('a', 3).set('b', 3);
 
 for (let [key, value] of h)
     ...
-    
+
 Array.from(h) === [['a', 3], ['b', 3]];
 ```
 
@@ -374,11 +374,36 @@ Array.from(hamt.empty.set('a', 3).values('b', 3).values()) === [3, 3];
 #### `map.forEach(f)`
 Invoke function `f` for each value in the map.
 
-* `f` - Function invoked with `(value, key, map)`. 
+* `f` - Function invoked with `(value, key, map)`.
 * `map` - Hamt map.
 
 Order is not guaranteed.
 
+
+## Development
+Any contributions to Hamt are welcome. Feel free to open an [issues][https://github.com/mattbierner/hamt/issues] if you run into problems or have a suggested improvement.
+
+To develop Hamt, fork the repo and install the development node packages:
+
+```bash
+cd hamt
+$ npm install
+```
+
+The source is written in ES6 and lives in `lib/hamt.js`. Gulp and Bable are used to translate the ES6 code to an ES5 distribution found in `hamt.js`. To start the compiler:
+
+```bash
+$ gulp default
+```
+
+Tests are written in Mocha and found in `tests\*`. To run the tests:
+
+```js
+$ mocha tests
+```
+
+## Credits
+Code originally based on [exclipy's Haskell port][pdata].
 
 [hamt_plus]: https://github.com/mattbierner/hamt_plus
 [hashtrie]: https://github.com/mattbierner/hashtrie
