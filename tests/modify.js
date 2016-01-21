@@ -25,13 +25,12 @@ describe('modify', () => {
         assert.strictEqual(10, hamt.get('a', h));
     });
 
-    // TODO: remove
-    // it('should call `f` with zero args on insert', () => {
-    //     const h = hamt.modify(function(x) {
-    //         assert.strictEqual(0, arguments.length);
-    //         assert.strictEqual(undefined, x);
-    //     }, 'a',  hamt.empty);
-    // });
+    it('should call `f` with zero args on insert', () => {
+        const h = hamt.modify(function(x) {
+            assert.strictEqual(0, arguments.length);
+            assert.strictEqual(undefined, x);
+        }, 'a',  hamt.empty);
+    });
 
     it('should insert if no value in map matches', () => {
         const h = hamt.empty.set('a', 3).set('b', 5);
@@ -83,6 +82,6 @@ describe('modify', () => {
             return 'b';
         };
 
-        const h1 = hamt.modify(transform, 'b', h, NOT_SET);
+        const h1 = hamt.modify(transform, 'b', NOT_SET, h);
     });
 });

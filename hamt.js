@@ -29,6 +29,16 @@ var MIN_ARRAY_NODE = BUCKET_SIZE / 4;
  ******************************************************************************/
 var nothing = {};
 
+var defaultVal = function defaultVal(f, defaultValue) {
+    return function (x) {
+        if (defaultValue === nothing) {
+            return f.apply(void 0, arguments);
+        }
+
+        return f(arguments.length == 0 ? defaultValue : x);
+    };
+};
+
 /* Bit Ops
  ******************************************************************************/
 /**
@@ -273,7 +283,7 @@ var mergeLeaves = function mergeLeaves(shift, h1, n1, h2, n2) {
     @param f Update function.
     @param k Key to update.
 */
-var updateCollisionList = function updateCollisionList(h, list, f, k, defaultValue) {
+var updateCollisionList = function updateCollisionList(h, list, f, k) {
     var target = undefined;
     var i = 0;
     for (var len = list.length; i < len; ++i) {
@@ -284,7 +294,7 @@ var updateCollisionList = function updateCollisionList(h, list, f, k, defaultVal
         }
     }
 
-    var v = target ? f(target.value) : f(defaultValue);
+    var v = target ? f(target.value) : f();
     return v === nothing ? arraySpliceOut(i, list) : arrayUpdate(i, new Leaf(h, k, v), list);
 };
 
@@ -339,25 +349,25 @@ var _lookup = function _lookup(node, h, k) {
 
 /* Editing
  ******************************************************************************/
-Leaf.prototype._modify = function (shift, f, h, k, defaultValue) {
+Leaf.prototype._modify = function (shift, f, h, k) {
     if (k === this.key) {
         var _v = f(this.value);
         return _v === nothing ? empty : new Leaf(h, k, _v);
     }
-    var v = f(defaultValue);
+    var v = f();
     return v === nothing ? this : mergeLeaves(shift, this.hash, this, h, new Leaf(h, k, v));
 };
 
-Collision.prototype._modify = function (shift, f, h, k, defaultValue) {
+Collision.prototype._modify = function (shift, f, h, k) {
     if (h === this.hash) {
-        var list = updateCollisionList(this.hash, this.children, f, k, defaultValue);
+        var list = updateCollisionList(this.hash, this.children, f, k);
         return list.length > 1 ? new Collision(this.hash, list) : list[0]; // collapse single element collision list
     }
-    var v = f(defaultValue);
+    var v = f();
     return v === nothing ? this : mergeLeaves(shift, this.hash, this, h, new Leaf(h, k, v));
 };
 
-IndexedNode.prototype._modify = function (shift, f, h, k, defaultValue) {
+IndexedNode.prototype._modify = function (shift, f, h, k) {
     var mask = this.mask;
     var children = this.children;
     var frag = hashFragment(shift, h);
@@ -365,7 +375,7 @@ IndexedNode.prototype._modify = function (shift, f, h, k, defaultValue) {
     var indx = fromBitmap(mask, bit);
     var exists = mask & bit;
     var current = exists ? children[indx] : empty;
-    var child = current._modify(shift + SIZE, f, h, k, defaultValue);
+    var child = current._modify(shift + SIZE, f, h, k);
 
     if (exists && isEmptyNode(child)) {
         // remove
@@ -383,12 +393,12 @@ IndexedNode.prototype._modify = function (shift, f, h, k, defaultValue) {
     return current === child ? this : new IndexedNode(mask, arrayUpdate(indx, child, children));
 };
 
-ArrayNode.prototype._modify = function (shift, f, h, k, defaultValue) {
+ArrayNode.prototype._modify = function (shift, f, h, k) {
     var count = this.size;
     var children = this.children;
     var frag = hashFragment(shift, h);
     var child = children[frag];
-    var newChild = (child || empty)._modify(shift + SIZE, f, h, k, defaultValue);
+    var newChild = (child || empty)._modify(shift + SIZE, f, h, k);
 
     if (isEmptyNode(child) && !isEmptyNode(newChild)) {
         // add
@@ -403,8 +413,8 @@ ArrayNode.prototype._modify = function (shift, f, h, k, defaultValue) {
     return child === newChild ? this : new ArrayNode(count, arrayUpdate(frag, newChild, children));
 };
 
-empty._modify = function (_, f, h, k, defaultValue) {
-    var v = f(defaultValue);
+empty._modify = function (_, f, h, k) {
+    var v = f();
     return v === nothing ? empty : new Leaf(h, k, v);
 };
 
@@ -519,12 +529,20 @@ Map.prototype.isEmpty = function () {
 
     Returns a map with the modified value. Does not alter `map`.
 */
-var modifyHash = hamt.modifyHash = function (f, hash, key, map, defaultValue) {
-    return new Map(map.root._modify(0, f, hash, key, defaultValue));
+var modifyHash = hamt.modifyHash = function (f, hash, key, defaultValue, map) {
+    if (arguments.length <= 4) {
+        map = defaultValue;
+        defaultValue = nothing;
+    }
+
+    f = defaultVal(f, defaultValue);
+
+    return new Map(map.root._modify(0, f, hash, key));
 };
 
 Map.prototype.modifyHash = function (hash, key, f, defaultValue) {
-    return modifyHash(f, hash, key, this, defaultValue);
+    defaultValue = arguments.length <= 3 ? nothing : defaultValue;
+    return modifyHash(f, hash, key, defaultValue, this);
 };
 
 /**
@@ -533,12 +551,17 @@ Map.prototype.modifyHash = function (hash, key, f, defaultValue) {
 
     @see `modifyHash`
 */
-var modify = hamt.modify = function (f, key, map, defaultValue) {
-    return modifyHash(f, hash(key), key, map, defaultValue);
+var modify = hamt.modify = function (f, key, defaultValue, map) {
+    if (arguments.length <= 3) {
+        map = defaultValue;
+        defaultValue = nothing;
+    }
+    return modifyHash(f, hash(key), key, defaultValue, map);
 };
 
 Map.prototype.modify = function (key, f, defaultValue) {
-    return modify(f, key, this, defaultValue);
+    defaultValue = arguments.length <= 2 ? nothing : defaultValue;
+    return modify(f, key, defaultValue, this);
 };
 
 /**
