@@ -413,7 +413,7 @@ empty._modify = function (_, f, h, k) {
 /*
  ******************************************************************************/
 function Map(root) {
-    this.root = root;
+    this._root = root;
 };
 
 /* Queries
@@ -424,7 +424,7 @@ function Map(root) {
     Returns the value or `alt` if none.
 */
 var tryGetHash = hamt.tryGetHash = function (alt, hash, key, map) {
-    var v = _lookup(map.root, hash, key);
+    var v = _lookup(map._root, hash, key);
     return v === nothing ? alt : v;
 };
 
@@ -502,7 +502,7 @@ hamt.empty = new Map(empty);
     Does `map` contain any elements?
 */
 var isEmpty = hamt.isEmpty = function (map) {
-    return !!isEmptyNode(map.root);
+    return !!isEmptyNode(map._root);
 };
 
 Map.prototype.isEmpty = function () {
@@ -522,8 +522,9 @@ Map.prototype.isEmpty = function () {
     Returns a map with the modified value. Does not alter `map`.
 */
 var modifyHash = hamt.modifyHash = function (f, hash, key, map) {
-    var newRoot = map.root._modify(0, f, hash, key);
-    return newRoot === map.root ? map : new Map(newRoot);
+    var root = map._root;
+    var newRoot = root._modify(0, f, hash, key);
+    return newRoot === root ? map : new Map(newRoot);
 };
 
 Map.prototype.modifyHash = function (hash, key, f) {
@@ -660,7 +661,7 @@ MapIterator.prototype[Symbol.iterator] = function () {
     Lazily visit each value in map with function `f`.
 */
 var visit = function visit(map, f) {
-    return new MapIterator(lazyVisit(map.root, f));
+    return new MapIterator(lazyVisit(map._root, f));
 };
 
 /**
@@ -749,7 +750,7 @@ ArrayNode.prototype._fold = function (f, z) {
     @param m HAMT
 */
 var fold = hamt.fold = function (f, z, m) {
-    return m.root._fold(f, z);
+    return m._root._fold(f, z);
 };
 
 Map.prototype.fold = function (f, z) {
