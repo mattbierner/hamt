@@ -19,6 +19,7 @@ describe('set', () => {
         assert.strictEqual(undefined, hamt.get('b', h));
     });
     
+    
     it('should overwrite entry in existing map', () => {
         const h1 = hamt.empty
             .set('a', 3)
@@ -42,7 +43,6 @@ describe('set', () => {
         assert.strictEqual(3, h2.getHash(0, 'a'));
         assert.strictEqual(5, h2.getHash(0, 'b'));
     });
-        
     
     it('should add to collisions correctly', () => {
         const h1 = hamt.empty.setHash(0, 'a', 3);
@@ -53,7 +53,6 @@ describe('set', () => {
         assert.strictEqual(5, h3.getHash(0, 'b'));
         assert.strictEqual(7, h3.getHash(1, 'c'));
     });
-
 
     it('should set values correctly from list with no order', () => {
         const arr = [
@@ -82,5 +81,30 @@ describe('set', () => {
         for (let i = 'A'.charCodeAt(0); i < 'z'.charCodeAt(0); ++i) {
             assert.strictEqual(i, hamt.get(String.fromCharCode(i), h));
         }
+    });
+    
+    it('should not mutate map if value is same as stored', () => {
+        {
+            const h = hamt.empty.set('a', 3);
+            const h1 = h.set('a', 3);
+            assert.strictEqual(h1, h);
+        }
+        {
+            const h = hamt.empty
+                .set('a', 3)
+                .set('b', 5)
+                .set('c', 10);
+            const h1 = h
+                .set('a', 3)
+                .set('b', 5)
+                .set('c', 10);
+            assert.strictEqual(h1, h);
+        }
+    });
+    
+    it('should not mutate map if value in collision is same as stored', () => {
+        const h = hamt.empty.setHash(0, 'a', 3).setHash(0, 'b', 3);
+        const h1 = h.setHash(0, 'a', 3);
+        assert.strictEqual(h1, h);
     });
 });

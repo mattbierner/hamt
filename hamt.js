@@ -339,6 +339,7 @@ var _lookup = function _lookup(node, h, k) {
 Leaf.prototype._modify = function (shift, f, h, k) {
     if (k === this.key) {
         var _v = f(this.value);
+        if (_v === this.value) return this;
         return _v === nothing ? empty : new Leaf(h, k, _v);
     }
     var v = f();
@@ -364,6 +365,8 @@ IndexedNode.prototype._modify = function (shift, f, h, k) {
     var current = exists ? children[indx] : empty;
     var child = current._modify(shift + SIZE, f, h, k);
 
+    if (current === child) return this;
+
     if (exists && isEmptyNode(child)) {
         // remove
         var bitmap = mask & ~bit;
@@ -377,7 +380,7 @@ IndexedNode.prototype._modify = function (shift, f, h, k) {
     }
 
     // modify
-    return current === child ? this : new IndexedNode(mask, arrayUpdate(indx, child, children));
+    return new IndexedNode(mask, arrayUpdate(indx, child, children));
 };
 
 ArrayNode.prototype._modify = function (shift, f, h, k) {
@@ -386,6 +389,8 @@ ArrayNode.prototype._modify = function (shift, f, h, k) {
     var frag = hashFragment(shift, h);
     var child = children[frag];
     var newChild = (child || empty)._modify(shift + SIZE, f, h, k);
+
+    if (child === newChild) return this;
 
     if (isEmptyNode(child) && !isEmptyNode(newChild)) {
         // add
@@ -397,7 +402,7 @@ ArrayNode.prototype._modify = function (shift, f, h, k) {
     }
 
     // modify
-    return child === newChild ? this : new ArrayNode(count, arrayUpdate(frag, newChild, children));
+    return new ArrayNode(count, arrayUpdate(frag, newChild, children));
 };
 
 empty._modify = function (_, f, h, k) {
@@ -517,7 +522,8 @@ Map.prototype.isEmpty = function () {
     Returns a map with the modified value. Does not alter `map`.
 */
 var modifyHash = hamt.modifyHash = function (f, hash, key, map) {
-    return new Map(map.root._modify(0, f, hash, key));
+    var newRoot = map.root._modify(0, f, hash, key);
+    return newRoot === map.root ? map : new Map(newRoot);
 };
 
 Map.prototype.modifyHash = function (hash, key, f) {
