@@ -160,8 +160,7 @@ var Leaf = function Leaf(hash, key, value) {
         hash: hash,
         key: key,
         value: value,
-        _modify: Leaf__modify,
-        _fold: Leaf__fold
+        _modify: Leaf__modify
     };
 };
 
@@ -176,8 +175,7 @@ var Collision = function Collision(hash, children) {
         type: COLLISION,
         hash: hash,
         children: children,
-        _modify: Collision__modify,
-        _fold: IndexedNode__fold // same impl
+        _modify: Collision__modify
     };
 };
 
@@ -194,8 +192,7 @@ var IndexedNode = function IndexedNode(mask, children) {
         type: INDEX,
         mask: mask,
         children: children,
-        _modify: IndexedNode__modify,
-        _fold: IndexedNode__fold
+        _modify: IndexedNode__modify
     };
 };
 
@@ -210,8 +207,7 @@ var ArrayNode = function ArrayNode(size, children) {
         type: ARRAY,
         size: size,
         children: children,
-        _modify: ArrayNode__modify,
-        _fold: ArrayNode__fold
+        _modify: ArrayNode__modify
     };
 };
 
@@ -734,28 +730,24 @@ Map.prototype.values = function () {
 
 /* Fold
  ******************************************************************************/
-var Leaf__fold = function Leaf__fold(f, z) {
-    return f(z, this.value, this.key);
-};
+var push = Array.prototype.push;
 
-empty._fold = function (f, z) {
-    return z;
-};
+var _fold = function _fold(f, z, node) {
+    var children = [node];
+    while (children.length) {
+        var child = children.pop();
+        if (!child) continue;
 
-var IndexedNode__fold = function IndexedNode__fold(f, z) {
-    var children = this.children;
-    for (var i = 0, len = children.length; i < len; ++i) {
-        var c = children[i];
-        z = c.type === LEAF ? f(z, c.value, c.key) : c._fold(f, z);
-    }
-    return z;
-};
-
-var ArrayNode__fold = function ArrayNode__fold(f, z) {
-    var children = this.children;
-    for (var i = 0, len = children.length; i < len; ++i) {
-        var c = children[i];
-        if (c && !isEmptyNode(c)) z = c.type === LEAF ? f(z, c.value, c.key) : c._fold(f, z);
+        switch (child.type) {
+            case LEAF:
+                z = f(z, child.value, child.key);
+                break;
+            case ARRAY:
+            case COLLISION:
+            case INDEX:
+                push.apply(children, child.children);
+                break;
+        }
     }
     return z;
 };
@@ -770,7 +762,7 @@ var ArrayNode__fold = function ArrayNode__fold(f, z) {
     @param m HAMT
 */
 var fold = hamt.fold = function (f, z, m) {
-    return m._root._fold(f, z);
+    return _fold(f, z, m._root);
 };
 
 Map.prototype.fold = function (f, z) {
