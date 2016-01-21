@@ -154,11 +154,15 @@ var isEmptyNode = function isEmptyNode(x) {
 	@member key Key.
 	@member value Value stored.
 */
-function Leaf(hash, key, value) {
-    this.type = LEAF;
-    this.hash = hash;
-    this.key = key;
-    this.value = value;
+var Leaf = function Leaf(hash, key, value) {
+    return {
+        type: LEAF,
+        hash: hash,
+        key: key,
+        value: value,
+        _modify: Leaf__modify,
+        _fold: Leaf__fold
+    };
 };
 
 /**
@@ -167,10 +171,14 @@ function Leaf(hash, key, value) {
 	@member hash Hash of key.
 	@member children Array of collision children node.
 */
-function Collision(hash, children) {
-    this.type = COLLISION;
-    this.hash = hash;
-    this.children = children;
+var Collision = function Collision(hash, children) {
+    return {
+        type: COLLISION,
+        hash: hash,
+        children: children,
+        _modify: Collision__modify,
+        _fold: IndexedNode__fold // same impl
+    };
 };
 
 /**
@@ -181,10 +189,14 @@ function Collision(hash, children) {
 	@member mask Bitmap that encode the positions of children in the array.
 	@member children Array of child nodes.
 */
-function IndexedNode(mask, children) {
-    this.type = INDEX;
-    this.mask = mask;
-    this.children = children;
+var IndexedNode = function IndexedNode(mask, children) {
+    return {
+        type: INDEX,
+        mask: mask,
+        children: children,
+        _modify: IndexedNode__modify,
+        _fold: IndexedNode__fold
+    };
 };
 
 /**
@@ -193,10 +205,14 @@ function IndexedNode(mask, children) {
 	@member size Number of children.
 	@member children Array of child nodes.
 */
-function ArrayNode(size, children) {
-    this.type = ARRAY;
-    this.size = size;
-    this.children = children;
+var ArrayNode = function ArrayNode(size, children) {
+    return {
+        type: ARRAY,
+        size: size,
+        children: children,
+        _modify: ArrayNode__modify,
+        _fold: ArrayNode__fold
+    };
 };
 
 /**
@@ -225,7 +241,7 @@ var expand = function expand(frag, child, bitmap, subNodes) {
         bit >>>= 1;
     }
     arr[frag] = child;
-    return new ArrayNode(count + 1, arr);
+    return ArrayNode(count + 1, arr);
 };
 
 /**
@@ -242,7 +258,7 @@ var pack = function pack(count, removed, elements) {
             bitmap |= 1 << i;
         }
     }
-    return new IndexedNode(bitmap, children);
+    return IndexedNode(bitmap, children);
 };
 
 /**
@@ -255,11 +271,11 @@ var pack = function pack(count, removed, elements) {
 	@param n2 Node 2.
 */
 var mergeLeaves = function mergeLeaves(shift, h1, n1, h2, n2) {
-    if (h1 === h2) return new Collision(h1, [n2, n1]);
+    if (h1 === h2) return Collision(h1, [n2, n1]);
 
     var subH1 = hashFragment(shift, h1);
     var subH2 = hashFragment(shift, h2);
-    return new IndexedNode(toBitmap(subH1) | toBitmap(subH2), subH1 === subH2 ? [mergeLeaves(shift + SIZE, h1, n1, h2, n2)] : subH1 < subH2 ? [n1, n2] : [n2, n1]);
+    return IndexedNode(toBitmap(subH1) | toBitmap(subH2), subH1 === subH2 ? [mergeLeaves(shift + SIZE, h1, n1, h2, n2)] : subH1 < subH2 ? [n1, n2] : [n2, n1]);
 };
 
 /**
@@ -279,12 +295,12 @@ var updateCollisionList = function updateCollisionList(h, list, f, k) {
             var _newValue = f(value);
             if (_newValue === value) return list;
 
-            return _newValue === nothing ? arraySpliceOut(i, list) : arrayUpdate(i, new Leaf(h, k, _newValue), list);
+            return _newValue === nothing ? arraySpliceOut(i, list) : arrayUpdate(i, Leaf(h, k, _newValue), list);
         }
     }
 
     var newValue = f();
-    return newValue === nothing ? list : arrayUpdate(len, new Leaf(h, k, newValue), list);
+    return newValue === nothing ? list : arrayUpdate(len, Leaf(h, k, newValue), list);
 };
 
 /* Lookups
@@ -338,28 +354,28 @@ var _lookup = function _lookup(node, h, k) {
 
 /* Editing
  ******************************************************************************/
-Leaf.prototype._modify = function (shift, f, h, k) {
+var Leaf__modify = function Leaf__modify(shift, f, h, k) {
     if (k === this.key) {
         var _v = f(this.value);
         if (_v === this.value) return this;
-        return _v === nothing ? empty : new Leaf(h, k, _v);
+        return _v === nothing ? empty : Leaf(h, k, _v);
     }
     var v = f();
-    return v === nothing ? this : mergeLeaves(shift, this.hash, this, h, new Leaf(h, k, v));
+    return v === nothing ? this : mergeLeaves(shift, this.hash, this, h, Leaf(h, k, v));
 };
 
-Collision.prototype._modify = function (shift, f, h, k) {
+var Collision__modify = function Collision__modify(shift, f, h, k) {
     if (h === this.hash) {
         var list = updateCollisionList(this.hash, this.children, f, k);
         if (list === this.children) return this;
 
-        return list.length > 1 ? new Collision(this.hash, list) : list[0]; // collapse single element collision list
+        return list.length > 1 ? Collision(this.hash, list) : list[0]; // collapse single element collision list
     }
     var v = f();
-    return v === nothing ? this : mergeLeaves(shift, this.hash, this, h, new Leaf(h, k, v));
+    return v === nothing ? this : mergeLeaves(shift, this.hash, this, h, Leaf(h, k, v));
 };
 
-IndexedNode.prototype._modify = function (shift, f, h, k) {
+var IndexedNode__modify = function IndexedNode__modify(shift, f, h, k) {
     var mask = this.mask;
     var children = this.children;
     var frag = hashFragment(shift, h);
@@ -376,18 +392,18 @@ IndexedNode.prototype._modify = function (shift, f, h, k) {
         var bitmap = mask & ~bit;
         if (!bitmap) return empty;
         return children.length <= 2 && isLeaf(children[indx ^ 1]) ? children[indx ^ 1] // collapse
-        : new IndexedNode(bitmap, arraySpliceOut(indx, children));
+        : IndexedNode(bitmap, arraySpliceOut(indx, children));
     }
     if (!exists && !isEmptyNode(child)) {
         // add
-        return children.length >= MAX_INDEX_NODE ? expand(frag, child, mask, children) : new IndexedNode(mask | bit, arraySpliceIn(indx, child, children));
+        return children.length >= MAX_INDEX_NODE ? expand(frag, child, mask, children) : IndexedNode(mask | bit, arraySpliceIn(indx, child, children));
     }
 
     // modify
-    return new IndexedNode(mask, arrayUpdate(indx, child, children));
+    return IndexedNode(mask, arrayUpdate(indx, child, children));
 };
 
-ArrayNode.prototype._modify = function (shift, f, h, k) {
+var ArrayNode__modify = function ArrayNode__modify(shift, f, h, k) {
     var count = this.size;
     var children = this.children;
     var frag = hashFragment(shift, h);
@@ -398,20 +414,20 @@ ArrayNode.prototype._modify = function (shift, f, h, k) {
 
     if (isEmptyNode(child) && !isEmptyNode(newChild)) {
         // add
-        return new ArrayNode(count + 1, arrayUpdate(frag, newChild, children));
+        return ArrayNode(count + 1, arrayUpdate(frag, newChild, children));
     }
     if (!isEmptyNode(child) && isEmptyNode(newChild)) {
         // remove
-        return count - 1 <= MIN_ARRAY_NODE ? pack(count, frag, children) : new ArrayNode(count - 1, arrayUpdate(frag, empty, children));
+        return count - 1 <= MIN_ARRAY_NODE ? pack(count, frag, children) : ArrayNode(count - 1, arrayUpdate(frag, empty, children));
     }
 
     // modify
-    return new ArrayNode(count, arrayUpdate(frag, newChild, children));
+    return ArrayNode(count, arrayUpdate(frag, newChild, children));
 };
 
 empty._modify = function (_, f, h, k) {
     var v = f();
-    return v === nothing ? empty : new Leaf(h, k, v);
+    return v === nothing ? empty : Leaf(h, k, v);
 };
 
 /*
@@ -718,7 +734,7 @@ Map.prototype.values = function () {
 
 /* Fold
  ******************************************************************************/
-Leaf.prototype._fold = function (f, z) {
+var Leaf__fold = function Leaf__fold(f, z) {
     return f(z, this.value, this.key);
 };
 
@@ -726,7 +742,7 @@ empty._fold = function (f, z) {
     return z;
 };
 
-Collision.prototype._fold = IndexedNode.prototype._fold = function (f, z) {
+var IndexedNode__fold = function IndexedNode__fold(f, z) {
     var children = this.children;
     for (var i = 0, len = children.length; i < len; ++i) {
         var c = children[i];
@@ -735,7 +751,7 @@ Collision.prototype._fold = IndexedNode.prototype._fold = function (f, z) {
     return z;
 };
 
-ArrayNode.prototype._fold = function (f, z) {
+var ArrayNode__fold = function ArrayNode__fold(f, z) {
     var children = this.children;
     for (var i = 0, len = children.length; i < len; ++i) {
         var c = children[i];
