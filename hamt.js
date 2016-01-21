@@ -242,6 +242,10 @@ var expand = function expand(frag, child, bitmap, subNodes) {
 
 /**
 	Collapse an array node into a indexed node.
+	
+	@param count Number of elements in new array.
+	@param removed Index of removed element.
+	@param elements Array node children before remove.
 */
 var pack = function pack(count, removed, elements) {
     var children = new Array(count - 1);
@@ -730,6 +734,9 @@ Map.prototype.values = function () {
 
 /* Fold
  ******************************************************************************/
+/**
+    Append all non-empty elements from `src` onto `dest`.
+*/
 var pushAll = function pushAll(dest, src) {
     for (var i = 0, len = src.length; i < len; ++i) {
         var x = src[i];
@@ -737,8 +744,17 @@ var pushAll = function pushAll(dest, src) {
     }
 };
 
-var _fold = function _fold(f, z, node) {
-    var toVisit = [node];
+/**
+    Visit every entry in the map, aggregating data.
+
+    Order of nodes is not guaranteed.
+    
+    @param f Function mapping accumulated value, value, and key to new value.
+    @param z Starting value.
+    @param m HAMT
+*/
+var fold = hamt.fold = function (f, z, m) {
+    var toVisit = [m._root];
     while (toVisit.length) {
         var child = toVisit.pop();
         switch (child.type) {
@@ -754,19 +770,6 @@ var _fold = function _fold(f, z, node) {
         }
     }
     return z;
-};
-
-/**
-    Visit every entry in the map, aggregating data.
-
-    Order of nodes is not guaranteed.
-    
-    @param f Function mapping accumulated value, value, and key to new value.
-    @param z Starting value.
-    @param m HAMT
-*/
-var fold = hamt.fold = function (f, z, m) {
-    return _fold(f, z, m._root);
 };
 
 Map.prototype.fold = function (f, z) {
