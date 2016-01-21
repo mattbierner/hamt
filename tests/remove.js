@@ -60,6 +60,7 @@ describe('remove', () => {
         assert.strictEqual(3, h2.getHash(0, 'a'));
         assert.strictEqual(5, h2.getHash(0, 'b'));
         assert.strictEqual(undefined, h2.getHash(0, 'c'));
+        assert.strictEqual(h1, h2);
     });
     
     it('should remove correctly from large set', () => {
@@ -97,4 +98,13 @@ describe('remove', () => {
             }
         }
     });
+    
+    it('should not mutate for noop remove', () => {
+        const h1 = hamt.empty
+            .set('a', 3)
+            .set('b', 5);
+        const h2 = hamt.remove('none', h1);
+        
+        assert.strictEqual(h1, h2);
+    })
 });

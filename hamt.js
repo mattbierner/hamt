@@ -271,18 +271,20 @@ var mergeLeaves = function mergeLeaves(shift, h1, n1, h2, n2) {
     @param k Key to update.
 */
 var updateCollisionList = function updateCollisionList(h, list, f, k) {
-    var target = undefined;
-    var i = 0;
-    for (var len = list.length; i < len; ++i) {
+    var len = list.length;
+    for (var i = 0; i < len; ++i) {
         var child = list[i];
         if (child.key === k) {
-            target = child;
-            break;
+            var value = child.value;
+            var _newValue = f(value);
+            if (_newValue === value) return list;
+
+            return _newValue === nothing ? arraySpliceOut(i, list) : arrayUpdate(i, new Leaf(h, k, _newValue), list);
         }
     }
 
-    var v = target ? f(target.value) : f();
-    return v === nothing ? arraySpliceOut(i, list) : arrayUpdate(i, new Leaf(h, k, v), list);
+    var newValue = f();
+    return newValue === nothing ? list : arrayUpdate(len, new Leaf(h, k, newValue), list);
 };
 
 /* Lookups
@@ -349,6 +351,8 @@ Leaf.prototype._modify = function (shift, f, h, k) {
 Collision.prototype._modify = function (shift, f, h, k) {
     if (h === this.hash) {
         var list = updateCollisionList(this.hash, this.children, f, k);
+        if (list === this.children) return this;
+
         return list.length > 1 ? new Collision(this.hash, list) : list[0]; // collapse single element collision list
     }
     var v = f();
