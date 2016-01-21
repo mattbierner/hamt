@@ -730,22 +730,26 @@ Map.prototype.values = function () {
 
 /* Fold
  ******************************************************************************/
-var push = Array.prototype.push;
+var pushAll = function pushAll(dest, src) {
+    for (var i = 0, len = src.length; i < len; ++i) {
+        var x = src[i];
+        if (x) dest.push(x);
+    }
+};
 
 var _fold = function _fold(f, z, node) {
-    var children = [node];
-    while (children.length) {
-        var child = children.pop();
-        if (!child) continue;
-
+    var toVisit = [node];
+    while (toVisit.length) {
+        var child = toVisit.pop();
         switch (child.type) {
             case LEAF:
                 z = f(z, child.value, child.key);
                 break;
+
             case ARRAY:
             case COLLISION:
             case INDEX:
-                push.apply(children, child.children);
+                pushAll(toVisit, child.children);
                 break;
         }
     }
