@@ -29,12 +29,8 @@ var MIN_ARRAY_NODE = BUCKET_SIZE / 4;
  ******************************************************************************/
 var nothing = {};
 
-var defaultVal = function defaultVal(f, defaultValue) {
+var defaultValBind = function defaultValBind(f, defaultValue) {
     return function (x) {
-        if (defaultValue === nothing) {
-            return f.apply(void 0, arguments);
-        }
-
         return f(arguments.length == 0 ? defaultValue : x);
     };
 };
@@ -532,17 +528,14 @@ Map.prototype.isEmpty = function () {
 var modifyHash = hamt.modifyHash = function (f, hash, key, defaultValue, map) {
     if (arguments.length <= 4) {
         map = defaultValue;
-        defaultValue = nothing;
+        return new Map(map.root._modify(0, f, hash, key));
     }
-
-    f = defaultVal(f, defaultValue);
-
+    f = defaultValBind(f, defaultValue);
     return new Map(map.root._modify(0, f, hash, key));
 };
 
 Map.prototype.modifyHash = function (hash, key, f, defaultValue) {
-    defaultValue = arguments.length <= 3 ? nothing : defaultValue;
-    return modifyHash(f, hash, key, defaultValue, this);
+    return arguments.length <= 3 ? modifyHash(f, hash, key, this) : modifyHash(f, hash, key, defaultValue, this);
 };
 
 /**
@@ -552,16 +545,11 @@ Map.prototype.modifyHash = function (hash, key, f, defaultValue) {
     @see `modifyHash`
 */
 var modify = hamt.modify = function (f, key, defaultValue, map) {
-    if (arguments.length <= 3) {
-        map = defaultValue;
-        defaultValue = nothing;
-    }
-    return modifyHash(f, hash(key), key, defaultValue, map);
+    return arguments.length <= 3 ? modifyHash(f, hash(key), key, defaultValue) : modifyHash(f, hash(key), key, defaultValue, map);
 };
 
 Map.prototype.modify = function (key, f, defaultValue) {
-    defaultValue = arguments.length <= 2 ? nothing : defaultValue;
-    return modify(f, key, defaultValue, this);
+    return arguments.length <= 2 ? modify(f, key, this) : modify(f, key, defaultValue, this);
 };
 
 /**
