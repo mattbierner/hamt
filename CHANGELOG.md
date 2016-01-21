@@ -4,7 +4,7 @@
 * Fixed `forEach`.
 
 ## 2.0.0 - January 4, 2016
-Focusing on API compatability with ES6 `Map` when possible.
+Focusing on API compatibility with ES6 `Map` when possible.
 * Lazily iterated over maps with `for (let [key, value] of map) { ... }`.
 * Added `entries` which returns a Javascript iterators to key value pairs.
     * `pairs` which did the same but built an array has been removed.
