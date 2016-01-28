@@ -1,5 +1,11 @@
 # ChangeLog #
 
+## 2.1.0 - January 27, 2016
+* Fixed edge case in remove when collapsing an ArrayNode.
+* `hash` will attempt to use `toString` to convert values.
+* Return same map for many noop mutations.
+* Performance tuning.
+
 ## 2.0.1 - January 4, 2016
 * Fixed `forEach`.
 
@@ -32,7 +38,7 @@ Focusing on API compatibility with ES6 `Map` when possible.
 * `hamt.get` returns undefined instead of `null` if lookup fails.
 * Switched argument order on `hamt.modify` and `hamt.set` to better support binding.
 	* Chain versions of these method have old argument order.
-* Removed `*Hash` functions since these expose too many implementation details and can easily produce undesirable behavior if not used carefully. 
+* Removed `*Hash` functions since these expose too many implementation details and can easily produce undesirable behavior if not used carefully.
 * Changed `fold` to call `f` with `(accumulated, value, key)` instead of `(accumulated, {value, key})`.
 * Aliased `map.delete` to `map.remove`.
 * Performance improvements and internal cleanup.

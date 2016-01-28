@@ -1,11 +1,11 @@
 {
     "name": "hamt",
-    "version": "2.0.2",
+    "version": "2.1.0",
     "description": "Hash Array Mapped Trie",
     "keywords": [
         "trie",
-	    "map",
-	    "immutable",
+        "map",
+        "immutable",
         "persistent",
         "data structure",
         "hash"
@@ -16,11 +16,11 @@
         "type": "git",
         "url": "https://github.com/mattbierner/hamt.git"
     },
-    
+
     "main": "hamt.js",
     "files": [
-    	"hamt.js",
-	    "hamt.js.map"
+        "hamt.js",
+        "hamt.js.map"
     ],
     "dependencies": {},
     "devDependencies": {
@@ -32,7 +32,7 @@
         "chai": "*",
         "mocha": "*"
     },
-    
+
     "scripts": {
         "test": "mocha tests"
     }

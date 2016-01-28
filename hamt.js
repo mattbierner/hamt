@@ -4,7 +4,7 @@ function _typeof(obj) { return obj && typeof Symbol !== "undefined" && obj.const
 
 /**
 	@fileOverview Hash Array Mapped Trie.
-	
+
 	Code based on: https://github.com/exclipy/pdata
 */
 var hamt = {}; // export
@@ -21,7 +21,7 @@ var MAX_INDEX_NODE = BUCKET_SIZE / 2;
 
 var MIN_ARRAY_NODE = BUCKET_SIZE / 4;
 
-/* 
+/*
  ******************************************************************************/
 var nothing = {};
 
@@ -33,7 +33,7 @@ var constant = function constant(x) {
 
 /**
 	Get 32 bit hash of string.
-	
+
 	Based on:
 	http://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
 */
@@ -54,7 +54,7 @@ var hash = hamt.hash = function (str) {
  ******************************************************************************/
 /**
 	Hamming weight.
-	
+
 	Taken from: http://jsperf.com/hamming-weight
 */
 var popcount = function popcount(x) {
@@ -82,7 +82,7 @@ var fromBitmap = function fromBitmap(bitmap, bit) {
  ******************************************************************************/
 /**
 	Set a value in an array.
-	
+
 	@param at Index to change.
 	@param v New value
 	@param arr Array.
@@ -98,7 +98,7 @@ var arrayUpdate = function arrayUpdate(at, v, arr) {
 
 /**
 	Remove a value from an array.
-	
+
 	@param at Index to remove.
 	@param arr Array.
 */
@@ -117,7 +117,7 @@ var arraySpliceOut = function arraySpliceOut(at, arr) {
 
 /**
 	Insert a value into an array.
-	
+
 	@param at Index to insert at.
 	@param v Value to insert,
 	@param arr Array.
@@ -153,7 +153,7 @@ var isEmptyNode = function isEmptyNode(x) {
 
 /**
 	Leaf holding a value.
-	
+
 	@member hash Hash of key.
 	@member key Key.
 	@member value Value stored.
@@ -170,7 +170,7 @@ var Leaf = function Leaf(hash, key, value) {
 
 /**
 	Leaf holding multiple values with the same hash but different keys.
-	
+
 	@member hash Hash of key.
 	@member children Array of collision children node.
 */
@@ -185,9 +185,9 @@ var Collision = function Collision(hash, children) {
 
 /**
 	Internal node with a sparse set of children.
-	
+
 	Uses a bitmap and array to pack children.
-	
+
 	@member mask Bitmap that encode the positions of children in the array.
 	@member children Array of child nodes.
 */
@@ -202,7 +202,7 @@ var IndexedNode = function IndexedNode(mask, children) {
 
 /**
 	Internal node with many children.
-	
+
 	@member size Number of children.
 	@member children Array of child nodes.
 */
@@ -226,7 +226,7 @@ var isLeaf = function isLeaf(node) {
  ******************************************************************************/
 /**
 	Expand an indexed node into an array node.
-	
+
 	@param frag Index of added child.
 	@param child Added child.
 	@param mask Index node mask before child added.
@@ -246,7 +246,7 @@ var expand = function expand(frag, child, bitmap, subNodes) {
 
 /**
 	Collapse an array node into a indexed node.
-	
+
 	@param count Number of elements in new array.
 	@param removed Index of removed element.
 	@param elements Array node children before remove.
@@ -256,10 +256,12 @@ var pack = function pack(count, removed, elements) {
     var g = 0;
     var bitmap = 0;
     for (var i = 0, len = elements.length; i < len; ++i) {
-        var elem = elements[i];
-        if (i !== removed && !isEmptyNode(elem)) {
-            children[g++] = elem;
-            bitmap |= 1 << i;
+        if (i !== removed) {
+            var elem = elements[i];
+            if (elem && !isEmptyNode(elem)) {
+                children[g++] = elem;
+                bitmap |= 1 << i;
+            }
         }
     }
     return IndexedNode(bitmap, children);
@@ -267,7 +269,7 @@ var pack = function pack(count, removed, elements) {
 
 /**
 	Merge two leaf nodes.
-	
+
 	@param shift Current shift.
 	@param h1 Node 1 hash.
 	@param n1 Node 1.
@@ -395,7 +397,7 @@ function Map(root) {
  ******************************************************************************/
 /**
     Lookup the value for `key` in `map` using a custom `hash`.
-    
+
     Returns the value or `alt` if none.
 */
 var tryGetHash = hamt.tryGetHash = function (alt, hash, key, map) {
@@ -450,7 +452,7 @@ Map.prototype.tryGetHash = function (alt, hash, key) {
 
 /**
     Lookup the value for `key` in `map` using internal hash function.
-    
+
     @see `tryGetHash`
 */
 var tryGet = hamt.tryGet = function (alt, key, map) {
@@ -463,7 +465,7 @@ Map.prototype.tryGet = function (alt, key) {
 
 /**
     Lookup the value for `key` in `map` using a custom `hash`.
-    
+
     Returns the value or `undefined` if none.
 */
 var getHash = hamt.getHash = function (hash, key, map) {
@@ -476,7 +478,7 @@ Map.prototype.getHash = function (hash, key) {
 
 /**
     Lookup the value for `key` in `map` using internal hash function.
-    
+
     @see `get`
 */
 var get = hamt.get = function (key, map) {
@@ -530,11 +532,11 @@ Map.prototype.isEmpty = function () {
 /**
     Alter the value stored for `key` in `map` using function `f` using
     custom hash.
-    
+
     `f` is invoked with the current value for `k` if it exists,
     or no arguments if no such value exists. `modify` will always either
     update or insert a value into the map.
-    
+
     Returns a map with the modified value. Does not alter `map`.
 */
 var modifyHash = hamt.modifyHash = function (f, hash, key, map) {
@@ -548,9 +550,9 @@ Map.prototype.modifyHash = function (hash, key, f) {
 };
 
 /**
-    Alter the value stored for `key` in `map` using function `f` using 
+    Alter the value stored for `key` in `map` using function `f` using
     internal hash function.
-    
+
     @see `modifyHash`
 */
 var modify = hamt.modify = function (f, key, map) {
@@ -576,7 +578,7 @@ Map.prototype.setHash = function (hash, key, value) {
 
 /**
     Store `value` for `key` in `map` using internal hash function.
-      
+
     @see `setHash`
 */
 var set = hamt.set = function (key, value, map) {
@@ -603,7 +605,7 @@ Map.prototype.removeHash = Map.prototype.deleteHash = function (hash, key) {
 
 /**
     Remove the entry for `key` in `map` using internal hash function.
-    
+
     @see `removeHash`
 */
 var remove = hamt.remove = function (key, map) {
@@ -682,7 +684,7 @@ var visit = function visit(map, f) {
 
 /**
     Get a Javascsript iterator of `map`.
-    
+
     Iterates over `[key, value]` arrays.
 */
 var buildPairs = function buildPairs(x) {
@@ -734,7 +736,7 @@ Map.prototype.values = function () {
     Visit every entry in the map, aggregating data.
 
     Order of nodes is not guaranteed.
-    
+
     @param f Function mapping accumulated value, value, and key to new value.
     @param z Starting value.
     @param m HAMT
@@ -764,7 +766,7 @@ Map.prototype.fold = function (f, z) {
     Visit every entry in the map, aggregating data.
 
     Order of nodes is not guaranteed.
-    
+
     @param f Function invoked with value and key
     @param map HAMT
 */
