@@ -1,5 +1,8 @@
-# Hamt
-Javascript Hash Array Mapped Trie
+<div align="center" >
+    <img src="https://raw.githubusercontent.com/mattbierner/hamt/master/documentation/hamt-logo.png" alt="H.A.M.T." />
+</div>
+
+<p align="center">Javascript Hash Array Mapped Trie</p>
 
 ### Overview
 The [hash array mapped trie][hash-array-mapped-trie] is a [persistent][persistent] map data structure with good lookup and update performance. This library provides an immutable map with an API that resembles [ES6's `Map`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map).
