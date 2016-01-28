@@ -1,5 +1,8 @@
 # ChangeLog #
 
+## 2.1.1 - January 27, 2016
+* Getting map size is now constant time.
+
 ## 2.1.0 - January 27, 2016
 * Fixed edge case in remove when collapsing an ArrayNode.
 * `hash` will attempt to use `toString` to convert values.
