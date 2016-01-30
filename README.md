@@ -341,7 +341,7 @@ max(hamt.empty.set('key', 3).set('key', 4)) === 4;
 
 #### `hamt.entries(map)`
 #### `map.entries()`
-Get an Javascript iterator to all key value pairs in `map`.
+Get a Javascript iterator to all key value pairs in `map`.
 
 * `map` - Hamt map.
 
@@ -368,7 +368,7 @@ Array.from(h) === [['a', 3], ['b', 3]];
 
 #### `hamt.key(map)`
 #### `map.keys()`
-Get an Javascript iterator to all keys in `map`.
+Get a Javascript iterator to all keys in `map`.
 
 * `map` - Hamt map.
 
@@ -384,7 +384,7 @@ Array.from(hamt.empty.set('a', 3).set('b', 3).keys()) === ['a', 'b'];
 
 #### `hamt.values(map)`
 #### `map.values()`
-Get an Javascript iterator to all values in `map`.
+Get a Javascript iterator to all values in `map`.
 
 * `map` - Hamt map.
 
