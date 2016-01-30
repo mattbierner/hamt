@@ -31,6 +31,12 @@ var constant = function constant(x) {
     };
 };
 
+var defaultValBind = function defaultValBind(f, defaultValue) {
+    return function (x) {
+        return f(arguments.length === 0 ? defaultValue : x);
+    };
+};
+
 /**
 	Get 32 bit hash of string.
 
@@ -561,14 +567,19 @@ Map.prototype.isEmpty = function () {
 
     Returns a map with the modified value. Does not alter `map`.
 */
-var modifyHash = hamt.modifyHash = function (f, hash, key, map) {
+var modifyHash = hamt.modifyHash = function (f, hash, key, defaultValue, map) {
+    if (arguments.length <= 4) {
+        map = defaultValue;
+    } else {
+        f = defaultValBind(f, defaultValue);
+    }
     var size = { value: map._size };
     var newRoot = map._root._modify(0, f, hash, key, size);
     return map.setTree(newRoot, size.value);
 };
 
-Map.prototype.modifyHash = function (hash, key, f) {
-    return modifyHash(f, hash, key, this);
+Map.prototype.modifyHash = function (hash, key, f, defaultValue) {
+    return arguments.length <= 3 ? modifyHash(f, hash, key, this) : modifyHash(f, hash, key, defaultValue, this);
 };
 
 /**
@@ -577,12 +588,12 @@ Map.prototype.modifyHash = function (hash, key, f) {
 
     @see `modifyHash`
 */
-var modify = hamt.modify = function (f, key, map) {
-    return modifyHash(f, hash(key), key, map);
+var modify = hamt.modify = function (f, key, defaultValue, map) {
+    return arguments.length <= 3 ? modifyHash(f, hash(key), key, defaultValue) : modifyHash(f, hash(key), key, defaultValue, map);
 };
 
-Map.prototype.modify = function (key, f) {
-    return modify(f, key, this);
+Map.prototype.modify = function (key, f, defaultValue) {
+    return arguments.length <= 2 ? modify(f, key, this) : modify(f, key, defaultValue, this);
 };
 
 /**
