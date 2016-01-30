@@ -276,17 +276,18 @@ var pack = function pack(count, removed, elements) {
 /**
 	Merge two leaf nodes.
 
+	@param shift Current shift.
 	@param h1 Node 1 hash.
 	@param n1 Node 1.
 	@param h2 Node 2 hash.
 	@param n2 Node 2.
 */
-var mergeLeaves = function mergeLeaves(h1, n1, h2, n2) {
+var mergeLeaves = function mergeLeaves(shift, h1, n1, h2, n2) {
     if (h1 === h2) return Collision(h1, [n2, n1]);
 
-    var subH1 = h1 & MASK;
-    var subH2 = h2 & MASK;
-    return IndexedNode(toBitmap(subH1) | toBitmap(subH2), subH1 === subH2 ? [mergeLeaves(h1 >>> SIZE, n1, h2 >>> SIZE, n2)] : subH1 < subH2 ? [n1, n2] : [n2, n1]);
+    var subH1 = hashFragment(shift, h1);
+    var subH2 = hashFragment(shift, h2);
+    return IndexedNode(toBitmap(subH1) | toBitmap(subH2), subH1 === subH2 ? [mergeLeaves(shift + SIZE, h1, n1, h2, n2)] : subH1 < subH2 ? [n1, n2] : [n2, n1]);
 };
 
 /**
@@ -336,7 +337,7 @@ var Leaf__modify = function Leaf__modify(shift, f, h, k, size) {
     var v = f();
     if (v === nothing) return this;
     ++size.value;
-    return mergeLeaves(this.hash >>> shift, this, h >>> shift, Leaf(h, k, v));
+    return mergeLeaves(shift, this.hash, this, h, Leaf(h, k, v));
 };
 
 var Collision__modify = function Collision__modify(shift, f, h, k, size) {
@@ -349,7 +350,7 @@ var Collision__modify = function Collision__modify(shift, f, h, k, size) {
     var v = f();
     if (v === nothing) return this;
     ++size.value;
-    return mergeLeaves(this.hash >>> shift, this, h >>> shift, Leaf(h, k, v));
+    return mergeLeaves(shift, this.hash, this, h, Leaf(h, k, v));
 };
 
 var IndexedNode__modify = function IndexedNode__modify(shift, f, h, k, size) {
