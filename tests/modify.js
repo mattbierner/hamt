@@ -29,7 +29,7 @@ describe('modify', () => {
         const h = hamt.modify(function(x) {
             assert.strictEqual(0, arguments.length);
             assert.strictEqual(undefined, x);
-        }, 'a',  hamt.empty);
+        }, 'a', hamt.empty);
     });
 
     it('should insert if no value in map matches', () => {
@@ -65,23 +65,27 @@ describe('modify', () => {
         assert.strictEqual(100, h5.getHash(0, 'c'));
     });
 
-    it('should provide defaultValue to `f` if entry does not exist on empty map', () => {
-        // TODO: complete
+    it('should provide `defaultValue` to `f` if entry does not exist in empty map', () => {
+        let found;
+        const h1 = hamt.modifyValue(x => {
+            found = x;
+            return x + x;
+        }, 10, 'a', hamt.empty);
+        assert.strictEqual(10, found);
+        assert.strictEqual(20, h1.get('a'));
     });
 
     it('should provide defaultValue to `f` if entry does not exist on non-empty map', () => {
+        const h = hamt.empty.set('a', 3);
 
-        const h = hamt.set('a', 3, hamt.empty);
-
-        const NOT_SET = {};
-
-        const transform = (x) => {
-
-            assert.strictEqual(x, NOT_SET);
-
-            return 'b';
-        };
-
-        const h1 = hamt.modify(transform, 'b', NOT_SET, h);
+        let found;
+        const h1 = hamt.modifyValue(x => {
+            found = x;
+            return x + x;
+        }, 10, 'b', h);
+        assert.strictEqual(2, h1.size);
+        assert.strictEqual(10, found);
+        assert.strictEqual(3, h1.get('a'));
+        assert.strictEqual(20, h1.get('b'));
     });
 });

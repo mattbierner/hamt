@@ -204,11 +204,13 @@ Same as `set` but uses a custom hash value.
 
 ----
 
-#### `hamt.modify(f, key, map)`
-#### `map.modify(key, f)`
+#### `hamt.modify(f, [defaultValue], key, map)`
+#### `map.modify(key, f, [defaultValue])`
 Update the value stored for `key` in `map`.
 
-* `f` - Function mapping the current value to the new value. If no current value exists, the function is invoked with no arguments.
+* `f` - Function mapping the current
+ to the new value. If no current value exists and `defaultValue` is not specified, the function is invoked with no arguments.
+* `defaultValue` – Optional value used for `f` is no value for `key` exists in `map`.
 * `key` - String key.
 * `map` - Hamt map.
 

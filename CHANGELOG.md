@@ -1,5 +1,8 @@
 # ChangeLog #
 
+## 2.2.0 - January 30, 2016
+* Added optional `defaultValue` field to `modify`. Thanks @dashed.
+
 ## 2.1.1 - January 27, 2016
 * Getting map size is now constant time.
 
