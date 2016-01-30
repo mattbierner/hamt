@@ -417,6 +417,8 @@ function Map(root, size) {
     this._size = size;
 };
 
+Map.prototype.__hamt_isMap = true;
+
 Map.prototype.setTree = function (root, size) {
     return root === this._root ? this : new Map(root, size);
 };
@@ -545,14 +547,21 @@ Map.prototype.has = function (key) {
 hamt.empty = new Map(empty, 0);
 
 /**
+    Is `value` a map?
+*/
+hamt.isMap = function (value) {
+    return !!(value && value.__hamt_isMap);
+};
+
+/**
     Does `map` contain any elements?
 */
-var isEmpty = hamt.isEmpty = function (map) {
-    return !!isEmptyNode(map._root);
+hamt.isEmpty = function (map) {
+    return !!(hamt.isMap(map) && isEmptyNode(map._root));
 };
 
 Map.prototype.isEmpty = function () {
-    return isEmpty(this);
+    return hamt.isEmpty(this);
 };
 
 /* Updates

@@ -85,7 +85,7 @@ h.get('key') === 'value'
 h2.getHash(5, 'key') === 'value'
 ```
 
-If using a custom hash, you must only use the `*Hash` varient of functions to interact with the map.
+If using a custom hash, you must only use the `*Hash` variant of functions to interact with the map.
 
 
 ``` javascript
@@ -99,9 +99,21 @@ h2.getHash(5, 'key') === 'value'
 
 
 ## API
+* [Basic](#basics)
+* [Lookup](#lookup)
+* [Modify](#Modify)
+* [Iteration](#iteration)
+
+
+### Basics
 
 #### `hamt.empty`
 An empty map.
+
+----
+
+#### `hamt.isMap(value)`
+Is `value` a map?
 
 ----
 
@@ -111,7 +123,23 @@ Is a map empty?
 
 This is the correct method to check if a map is empty. Direct comparisons to `hamt.empty` will not work.
 
-----
+Returns `false` if `map` is not a map.
+
+#### `hamt.count(map)`
+#### `map.count()`
+#### `map.size`
+Get number of elements in `map`.
+
+* `map` - Hamt map.
+
+
+``` javascript
+hamt.empty.count() === 0;
+hamt.empty.set('a', 3).count() === 1;
+hamt.empty.set('a', 3).set('b', 3).size === 2;
+```
+
+### Lookup
 
 #### `hamt.get(key, map)`
 #### `map.get(key)`
@@ -202,15 +230,13 @@ h.get('key3') === undefined
 #### `map.setHash(hash, key, value)`
 Same as `set` but uses a custom hash value.
 
-----
+### Modify
 
-#### `hamt.modify(f, [defaultValue], key, map)`
-#### `map.modify(key, f, [defaultValue])`
+#### `hamt.modify(f, key, map)`
+#### `map.modify(key, f)`
 Update the value stored for `key` in `map`.
 
-* `f` - Function mapping the current
- to the new value. If no current value exists and `defaultValue` is not specified, the function is invoked with no arguments.
-* `defaultValue` – Optional value used for `f` is no value for `key` exists in `map`.
+* `f` - Function mapping current value to new value. If no current value exists, `f` is invoked with no arguments.
 * `key` - String key.
 * `map` - Hamt map.
 
@@ -247,6 +273,18 @@ Same as `modify` but uses a custom hash value.
 
 ----
 
+#### `hamt.modifyValue(f, defaultValue, key, map)`
+#### `map.modifyValue(key, f, defaultValue)`
+Similar to `modify`, but invokes `f` with  `defaultValue` if no value exists in `map` for `key`.
+
+----
+
+#### `hamt.modifyValueHash(f, defaultValue, hash, key, map)`
+#### `map.modifyValueHash(hash, key, f, defaultValue)`
+Same as `modifyValue` but uses a custom hash value.
+
+----
+
 #### `hamt.remove(key, map)`
 #### `map.remove(key)`
 #### `map.delete(key)`
@@ -280,21 +318,7 @@ Same as `remove` but uses a custom hash value.
 
 ----
 
-#### `hamt.count(map)`
-#### `map.count()`
-#### `map.size`
-Get number of elements in `map`.
-
-* `map` - Hamt map.
-
-
-``` javascript
-hamt.empty.count() === 0;
-hamt.empty.set('a', 3).count() === 1;
-hamt.empty.set('a', 3).set('b', 3).count() === 2;
-```
-
-----
+### Iteration
 
 #### `hamt.fold(f, z, map)`
 #### `map.fold(f, z)`
