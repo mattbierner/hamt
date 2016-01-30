@@ -99,11 +99,10 @@ h2.getHash(5, 'key') === 'value'
 
 
 ## API
-* [Basic](#basics)
-* [Lookup](#lookup)
-* [Modify](#Modify)
-* [Iteration](#iteration)
-
+* [Basic](#basics) – Basic map operations.
+* [Lookup](#lookup) – Looking up values in a map.
+* [Modify](#modify) – Updating a map.
+* [Iteration](#iteration) – Looping and folding over a map.
 
 ### Basics
 
