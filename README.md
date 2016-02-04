@@ -33,7 +33,7 @@ h2.get('key') === undefined
 h.get('key') === 'value'
 ```
 
-[Benchmarks show][benchmarks] show that this library performs well, even as the size of the map becomes very large. [Check out Hamt+][hamt_plus] if you want support for additional features such as custom key types and transient mutation.
+[Benchmarks][benchmarks] show that this library performs well, even as the size of the map becomes very large. [Check out Hamt+][hamt_plus] if you want support for additional features such as custom key types and transient mutation.
 
 ## Install
 Source code is in `hamt.js` and generated from `lib/hamt.js`. The library supports node, AMD, and use as a global.
