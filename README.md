@@ -409,7 +409,7 @@ Order is not guaranteed.
 
 
 ## Development
-Any contributions to Hamt are welcome. Feel free to open an [issues][https://github.com/mattbierner/hamt/issues] if you run into problems or have a suggested improvement.
+Any contributions to Hamt are welcome. Feel free to open an [issues](https://github.com/mattbierner/hamt/issues) if you run into problems or have a suggested improvement.
 
 To develop Hamt, fork the repo and install the development node packages:
 
