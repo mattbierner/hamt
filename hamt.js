@@ -315,36 +315,36 @@ var updateCollisionList = function updateCollisionList(h, list, f, k, size) {
 
 /* Editing
  ******************************************************************************/
-var Leaf__modify = function Leaf__modify(shift, f, h, k, size) {
+var Leaf__modify = function Leaf__modify(shift, op, h, k, size) {
     if (k === this.key) {
-        if (f.__hamt_delete_op) {
+        if (op.__hamt_delete_op) {
             --size.value;
             return empty;
         }
         var currentValue = this.value;
-        var _v = f.__hamt_set_op ? f.value : f(currentValue);
-        return _v === currentValue ? this : Leaf(h, k, _v);
+        var _newValue2 = op.__hamt_set_op ? op.value : op(currentValue);
+        return _newValue2 === currentValue ? this : Leaf(h, k, _newValue2);
     }
-    if (f.__hamt_delete_op) return this;
-    var v = f.__hamt_set_op ? f.value : f();
+    if (op.__hamt_delete_op) return this;
+    var newValue = op.__hamt_set_op ? op.value : op();
     ++size.value;
-    return mergeLeaves(shift, this.hash, this, h, Leaf(h, k, v));
+    return mergeLeaves(shift, this.hash, this, h, Leaf(h, k, newValue));
 };
 
-var Collision__modify = function Collision__modify(shift, f, h, k, size) {
+var Collision__modify = function Collision__modify(shift, op, h, k, size) {
     if (h === this.hash) {
-        var list = updateCollisionList(this.hash, this.children, f, k, size);
+        var list = updateCollisionList(this.hash, this.children, op, k, size);
         if (list === this.children) return this;
 
         return list.length > 1 ? Collision(this.hash, list) : list[0]; // collapse single element collision list
     }
-    if (f.__hamt_delete_op) return this;
-    var v = f.__hamt_set_op ? f.value : f();
+    if (op.__hamt_delete_op) return this;
+    var newValue = op.__hamt_set_op ? op.value : op();
     ++size.value;
-    return mergeLeaves(shift, this.hash, this, h, Leaf(h, k, v));
+    return mergeLeaves(shift, this.hash, this, h, Leaf(h, k, newValue));
 };
 
-var IndexedNode__modify = function IndexedNode__modify(shift, f, h, k, size) {
+var IndexedNode__modify = function IndexedNode__modify(shift, op, h, k, size) {
     var mask = this.mask;
     var children = this.children;
     var frag = hashFragment(shift, h);
@@ -352,7 +352,7 @@ var IndexedNode__modify = function IndexedNode__modify(shift, f, h, k, size) {
     var indx = fromBitmap(mask, bit);
     var exists = mask & bit;
     var current = exists ? children[indx] : empty;
-    var child = current._modify(shift + SIZE, f, h, k, size);
+    var child = current._modify(shift + SIZE, op, h, k, size);
 
     if (current === child) return this;
 
@@ -372,12 +372,12 @@ var IndexedNode__modify = function IndexedNode__modify(shift, f, h, k, size) {
     return IndexedNode(mask, arrayUpdate(indx, child, children));
 };
 
-var ArrayNode__modify = function ArrayNode__modify(shift, f, h, k, size) {
+var ArrayNode__modify = function ArrayNode__modify(shift, op, h, k, size) {
     var count = this.size;
     var children = this.children;
     var frag = hashFragment(shift, h);
     var child = children[frag];
-    var newChild = (child || empty)._modify(shift + SIZE, f, h, k, size);
+    var newChild = (child || empty)._modify(shift + SIZE, op, h, k, size);
 
     if (child === newChild) return this;
 
@@ -394,11 +394,11 @@ var ArrayNode__modify = function ArrayNode__modify(shift, f, h, k, size) {
     return ArrayNode(count, arrayUpdate(frag, newChild, children));
 };
 
-empty._modify = function (_, f, h, k, size) {
-    if (f.__hamt_delete_op) return empty;
-    var v = f.__hamt_set_op ? f.value : f();
+empty._modify = function (_, op, h, k, size) {
+    if (op.__hamt_delete_op) return empty;
+    var newValue = op.__hamt_set_op ? op.value : op();
     ++size.value;
-    return Leaf(h, k, v);
+    return Leaf(h, k, newValue);
 };
 
 /*
