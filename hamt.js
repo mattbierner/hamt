@@ -23,14 +23,6 @@ var MIN_ARRAY_NODE = BUCKET_SIZE / 4;
 
 /*
  ******************************************************************************/
-var nothing = {};
-
-var constant = function constant(x) {
-    return function () {
-        return x;
-    };
-};
-
 var defaultValBind = function defaultValBind(f, defaultValue) {
     return function (x) {
         return f(arguments.length === 0 ? defaultValue : x);
@@ -305,19 +297,18 @@ var updateCollisionList = function updateCollisionList(h, list, f, k, size) {
         var child = list[i];
         if (child.key === k) {
             var value = child.value;
-            var _newValue = f(value);
-            if (_newValue === value) return list;
-
-            if (_newValue === nothing) {
+            if (f.__hamt_delete_op) {
                 --size.value;
                 return arraySpliceOut(i, list);
             }
+            var _newValue = f.__hamt_set_op ? f.value : f(value);
+            if (_newValue === value) return list;
             return arrayUpdate(i, Leaf(h, k, _newValue), list);
         }
     }
 
-    var newValue = f();
-    if (newValue === nothing) return list;
+    if (f.__hamt_delete_op) return list;
+    var newValue = f.__hamt_set_op ? f.value : f();
     ++size.value;
     return arrayUpdate(len, Leaf(h, k, newValue), list);
 };
@@ -326,16 +317,16 @@ var updateCollisionList = function updateCollisionList(h, list, f, k, size) {
  ******************************************************************************/
 var Leaf__modify = function Leaf__modify(shift, f, h, k, size) {
     if (k === this.key) {
-        var _v = f(this.value);
-        if (_v === this.value) return this;
-        if (_v === nothing) {
+        if (f.__hamt_delete_op) {
             --size.value;
             return empty;
         }
-        return Leaf(h, k, _v);
+        var currentValue = this.value;
+        var _v = f.__hamt_set_op ? f.value : f(currentValue);
+        return _v === currentValue ? this : Leaf(h, k, _v);
     }
-    var v = f();
-    if (v === nothing) return this;
+    if (f.__hamt_delete_op) return this;
+    var v = f.__hamt_set_op ? f.value : f();
     ++size.value;
     return mergeLeaves(shift, this.hash, this, h, Leaf(h, k, v));
 };
@@ -347,8 +338,8 @@ var Collision__modify = function Collision__modify(shift, f, h, k, size) {
 
         return list.length > 1 ? Collision(this.hash, list) : list[0]; // collapse single element collision list
     }
-    var v = f();
-    if (v === nothing) return this;
+    if (f.__hamt_delete_op) return this;
+    var v = f.__hamt_set_op ? f.value : f();
     ++size.value;
     return mergeLeaves(shift, this.hash, this, h, Leaf(h, k, v));
 };
@@ -404,8 +395,8 @@ var ArrayNode__modify = function ArrayNode__modify(shift, f, h, k, size) {
 };
 
 empty._modify = function (_, f, h, k, size) {
-    var v = f();
-    if (v === nothing) return empty;
+    if (f.__hamt_delete_op) return empty;
+    var v = f.__hamt_set_op ? f.value : f();
     ++size.value;
     return Leaf(h, k, v);
 };
@@ -519,6 +510,7 @@ Map.prototype.get = function (key, alt) {
     return tryGet(alt, key, this);
 };
 
+var nothing = {};
 /**
     Does an entry exist for `key` in `map`? Uses custom `hash`.
 */
@@ -632,7 +624,7 @@ Map.prototype.modifyValue = function (key, f, defaultValue) {
     Returns a map with the modified value. Does not alter `map`.
 */
 var setHash = hamt.setHash = function (hash, key, value, map) {
-    return modifyHash(constant(value), hash, key, map);
+    return modifyHash({ __hamt_set_op: true, value: value }, hash, key, map);
 };
 
 Map.prototype.setHash = function (hash, key, value) {
@@ -657,7 +649,7 @@ Map.prototype.set = function (key, value) {
 
     Returns a map with the value removed. Does not alter `map`.
 */
-var del = constant(nothing);
+var del = { __hamt_delete_op: true };
 var removeHash = hamt.removeHash = function (hash, key, map) {
     return modifyHash(del, hash, key, map);
 };
