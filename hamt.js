@@ -677,7 +677,7 @@ Map.prototype.remove = Map.prototype.delete = function (key) {
     Apply a continuation.
 */
 var appk = function appk(k) {
-    return k && lazyVisitChildren(k[0], k[1], k[2], k[3], k[4]);
+    return k && lazyVisitChildren(k.len, k.children, k.i, k.f, k.k);
 };
 
 /**
@@ -686,7 +686,7 @@ var appk = function appk(k) {
 var lazyVisitChildren = function lazyVisitChildren(len, children, i, f, k) {
     while (i < len) {
         var child = children[i++];
-        if (child && !isEmptyNode(child)) return lazyVisit(child, f, [len, children, i, f, k]);
+        if (child && !isEmptyNode(child)) return lazyVisit(child, f, { len: len, children: children, i: i, f: f, k: k });
     }
     return appk(k);
 };
