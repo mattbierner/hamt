@@ -1,11 +1,11 @@
 'use strict';
 
-function _typeof(obj) { return obj && typeof Symbol !== "undefined" && obj.constructor === Symbol ? "symbol" : typeof obj; }
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 /**
-	@fileOverview Hash Array Mapped Trie.
+    @fileOverview Hash Array Mapped Trie.
 
-	Code based on: https://github.com/exclipy/pdata
+    Code based on: https://github.com/exclipy/pdata
 */
 var hamt = {}; // export
 
@@ -38,10 +38,10 @@ var defaultValBind = function defaultValBind(f, defaultValue) {
 };
 
 /**
-	Get 32 bit hash of string.
+    Get 32 bit hash of string.
 
-	Based on:
-	http://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
+    Based on:
+    http://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
 */
 var hash = hamt.hash = function (str) {
     var type = typeof str === 'undefined' ? 'undefined' : _typeof(str);
@@ -59,9 +59,9 @@ var hash = hamt.hash = function (str) {
 /* Bit Ops
  ******************************************************************************/
 /**
-	Hamming weight.
+    Hamming weight.
 
-	Taken from: http://jsperf.com/hamming-weight
+    Taken from: http://jsperf.com/hamming-weight
 */
 var popcount = function popcount(x) {
     x -= x >> 1 & 0x55555555;
@@ -87,11 +87,11 @@ var fromBitmap = function fromBitmap(bitmap, bit) {
 /* Array Ops
  ******************************************************************************/
 /**
-	Set a value in an array.
+    Set a value in an array.
 
-	@param at Index to change.
-	@param v New value
-	@param arr Array.
+    @param at Index to change.
+    @param v New value
+    @param arr Array.
 */
 var arrayUpdate = function arrayUpdate(at, v, arr) {
     var len = arr.length;
@@ -103,10 +103,10 @@ var arrayUpdate = function arrayUpdate(at, v, arr) {
 };
 
 /**
-	Remove a value from an array.
+    Remove a value from an array.
 
-	@param at Index to remove.
-	@param arr Array.
+    @param at Index to remove.
+    @param arr Array.
 */
 var arraySpliceOut = function arraySpliceOut(at, arr) {
     var len = arr.length;
@@ -122,11 +122,11 @@ var arraySpliceOut = function arraySpliceOut(at, arr) {
 };
 
 /**
-	Insert a value into an array.
+    Insert a value into an array.
 
-	@param at Index to insert at.
-	@param v Value to insert,
-	@param arr Array.
+    @param at Index to insert at.
+    @param v Value to insert,
+    @param arr Array.
 */
 var arraySpliceIn = function arraySpliceIn(at, v, arr) {
     var len = arr.length;
@@ -149,7 +149,7 @@ var INDEX = 3;
 var ARRAY = 4;
 
 /**
-	Empty node.
+    Empty node.
 */
 var empty = { __hamt_isEmpty: true };
 
@@ -158,11 +158,11 @@ var isEmptyNode = function isEmptyNode(x) {
 };
 
 /**
-	Leaf holding a value.
+    Leaf holding a value.
 
-	@member hash Hash of key.
-	@member key Key.
-	@member value Value stored.
+    @member hash Hash of key.
+    @member key Key.
+    @member value Value stored.
 */
 var Leaf = function Leaf(hash, key, value) {
     return {
@@ -175,10 +175,10 @@ var Leaf = function Leaf(hash, key, value) {
 };
 
 /**
-	Leaf holding multiple values with the same hash but different keys.
+    Leaf holding multiple values with the same hash but different keys.
 
-	@member hash Hash of key.
-	@member children Array of collision children node.
+    @member hash Hash of key.
+    @member children Array of collision children node.
 */
 var Collision = function Collision(hash, children) {
     return {
@@ -190,12 +190,12 @@ var Collision = function Collision(hash, children) {
 };
 
 /**
-	Internal node with a sparse set of children.
+    Internal node with a sparse set of children.
 
-	Uses a bitmap and array to pack children.
+    Uses a bitmap and array to pack children.
 
-	@member mask Bitmap that encode the positions of children in the array.
-	@member children Array of child nodes.
+    @member mask Bitmap that encode the positions of children in the array.
+    @member children Array of child nodes.
 */
 var IndexedNode = function IndexedNode(mask, children) {
     return {
@@ -207,10 +207,10 @@ var IndexedNode = function IndexedNode(mask, children) {
 };
 
 /**
-	Internal node with many children.
+    Internal node with many children.
 
-	@member size Number of children.
-	@member children Array of child nodes.
+    @member size Number of children.
+    @member children Array of child nodes.
 */
 var ArrayNode = function ArrayNode(size, children) {
     return {
@@ -222,7 +222,7 @@ var ArrayNode = function ArrayNode(size, children) {
 };
 
 /**
-	Is `node` a leaf node?
+    Is `node` a leaf node?
 */
 var isLeaf = function isLeaf(node) {
     return node === empty || node.type === LEAF || node.type === COLLISION;
@@ -231,12 +231,12 @@ var isLeaf = function isLeaf(node) {
 /* Internal node operations.
  ******************************************************************************/
 /**
-	Expand an indexed node into an array node.
+    Expand an indexed node into an array node.
 
-	@param frag Index of added child.
-	@param child Added child.
-	@param mask Index node mask before child added.
-	@param subNodes Index node children before child added.
+    @param frag Index of added child.
+    @param child Added child.
+    @param mask Index node mask before child added.
+    @param subNodes Index node children before child added.
 */
 var expand = function expand(frag, child, bitmap, subNodes) {
     var arr = [];
@@ -251,11 +251,11 @@ var expand = function expand(frag, child, bitmap, subNodes) {
 };
 
 /**
-	Collapse an array node into a indexed node.
+    Collapse an array node into a indexed node.
 
-	@param count Number of elements in new array.
-	@param removed Index of removed element.
-	@param elements Array node children before remove.
+    @param count Number of elements in new array.
+    @param removed Index of removed element.
+    @param elements Array node children before remove.
 */
 var pack = function pack(count, removed, elements) {
     var children = new Array(count - 1);
@@ -274,13 +274,13 @@ var pack = function pack(count, removed, elements) {
 };
 
 /**
-	Merge two leaf nodes.
+    Merge two leaf nodes.
 
-	@param shift Current shift.
-	@param h1 Node 1 hash.
-	@param n1 Node 1.
-	@param h2 Node 2 hash.
-	@param n2 Node 2.
+    @param shift Current shift.
+    @param h1 Node 1 hash.
+    @param n1 Node 1.
+    @param h2 Node 2 hash.
+    @param n2 Node 2.
 */
 var mergeLeaves = function mergeLeaves(shift, h1, n1, h2, n2) {
     if (h1 === h2) return Collision(h1, [n2, n1]);
@@ -746,7 +746,7 @@ var visit = function visit(map, f) {
 };
 
 /**
-    Get a Javascsript iterator of `map`.
+    Get a Javascript iterator of `map`.
 
     Iterates over `[key, value]` arrays.
 */
@@ -809,7 +809,7 @@ var fold = hamt.fold = function (f, z, m) {
     if (root.type === LEAF) return f(z, root.value, root.key);
 
     var toVisit = [root.children];
-    var children = undefined;
+    var children = void 0;
     while (children = toVisit.pop()) {
         for (var i = 0, len = children.length; i < len;) {
             var child = children[i++];
