@@ -1,5 +1,8 @@
 # ChangeLog #
 
+## 2.2.1 - September 24, 2017
+* Small optimizations.
+
 ## 2.2.0 - January 30, 2016
 * Added ` modifyValue` which takes a default value to invoke `f` with if no value exists. Thanks @dashed.
 * Added `isMap` function to check if a value is a map.

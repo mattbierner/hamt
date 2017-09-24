@@ -1,6 +1,6 @@
 {
     "name": "hamt",
-    "version": "2.2.0",
+    "version": "2.2.1",
     "description": "Hash Array Mapped Trie",
     "keywords": [
         "trie",
@@ -16,7 +16,6 @@
         "type": "git",
         "url": "https://github.com/mattbierner/hamt.git"
     },
-
     "main": "hamt.js",
     "files": [
         "hamt.js",
@@ -32,7 +31,6 @@
         "chai": "*",
         "mocha": "*"
     },
-
     "scripts": {
         "test": "mocha tests"
     }
