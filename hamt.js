@@ -141,15 +141,6 @@ var INDEX = 3;
 var ARRAY = 4;
 
 /**
-    Empty node.
-*/
-var empty = { __hamt_isEmpty: true };
-
-var isEmptyNode = function isEmptyNode(x) {
-    return x === empty || x && x.__hamt_isEmpty;
-};
-
-/**
     Leaf holding a value.
 
     @member hash Hash of key.
@@ -217,7 +208,7 @@ var ArrayNode = function ArrayNode(size, children) {
     Is `node` a leaf node?
 */
 var isLeaf = function isLeaf(node) {
-    return node === empty || node.type === LEAF || node.type === COLLISION;
+    return node.type === LEAF || node.type === COLLISION;
 };
 
 /* Internal node operations.
@@ -256,7 +247,7 @@ var pack = function pack(count, removed, elements) {
     for (var i = 0, len = elements.length; i < len; ++i) {
         if (i !== removed) {
             var elem = elements[i];
-            if (elem && !isEmptyNode(elem)) {
+            if (elem) {
                 children[g++] = elem;
                 bitmap |= 1 << i;
             }
@@ -319,7 +310,7 @@ var Leaf__modify = function Leaf__modify(shift, op, h, k, size) {
     if (k === this.key) {
         if (op.__hamt_delete_op) {
             --size.value;
-            return empty;
+            return undefined;
         }
         var currentValue = this.value;
         var _newValue2 = op.__hamt_set_op ? op.value : op(currentValue);
@@ -351,25 +342,30 @@ var IndexedNode__modify = function IndexedNode__modify(shift, op, h, k, size) {
     var bit = toBitmap(frag);
     var indx = fromBitmap(mask, bit);
     var exists = mask & bit;
-    var current = exists ? children[indx] : empty;
-    var child = current._modify(shift + SIZE, op, h, k, size);
+    if (!exists) {
+        // add
+        var _newChild = empty__modify(shift + SIZE, op, h, k, size);
+        if (!_newChild) return this;
 
-    if (current === child) return this;
+        return children.length >= MAX_INDEX_NODE ? expand(frag, _newChild, mask, children) : IndexedNode(mask | bit, arraySpliceIn(indx, _newChild, children));
+    }
 
-    if (exists && isEmptyNode(child)) {
+    var current = children[indx];
+    var newChild = current._modify(shift + SIZE, op, h, k, size);
+    if (current === newChild) return this;
+
+    if (!newChild) {
         // remove
         var bitmap = mask & ~bit;
-        if (!bitmap) return empty;
-        return children.length <= 2 && isLeaf(children[indx ^ 1]) ? children[indx ^ 1] // collapse
+        if (!bitmap) return undefined;
+
+        return children.length === 2 && isLeaf(children[indx ^ 1]) ? children[indx ^ 1] // collapse
         : IndexedNode(bitmap, arraySpliceOut(indx, children));
-    }
-    if (!exists && !isEmptyNode(child)) {
-        // add
-        return children.length >= MAX_INDEX_NODE ? expand(frag, child, mask, children) : IndexedNode(mask | bit, arraySpliceIn(indx, child, children));
     }
 
     // modify
-    return IndexedNode(mask, arrayUpdate(indx, child, children));
+    return children.length === 1 && isLeaf(newChild) ? newChild // propagate collapse
+    : IndexedNode(mask, arrayUpdate(indx, newChild, children));
 };
 
 var ArrayNode__modify = function ArrayNode__modify(shift, op, h, k, size) {
@@ -377,25 +373,25 @@ var ArrayNode__modify = function ArrayNode__modify(shift, op, h, k, size) {
     var children = this.children;
     var frag = hashFragment(shift, h);
     var child = children[frag];
-    var newChild = (child || empty)._modify(shift + SIZE, op, h, k, size);
+    var newChild = child ? child._modify(shift + SIZE, op, h, k, size) : empty__modify(shift + SIZE, op, h, k, size);
 
     if (child === newChild) return this;
 
-    if (isEmptyNode(child) && !isEmptyNode(newChild)) {
+    if (!child && newChild) {
         // add
         return ArrayNode(count + 1, arrayUpdate(frag, newChild, children));
     }
-    if (!isEmptyNode(child) && isEmptyNode(newChild)) {
+    if (child && !newChild) {
         // remove
-        return count - 1 <= MIN_ARRAY_NODE ? pack(count, frag, children) : ArrayNode(count - 1, arrayUpdate(frag, empty, children));
+        return count - 1 <= MIN_ARRAY_NODE ? pack(count, frag, children) : ArrayNode(count - 1, arrayUpdate(frag, undefined, children));
     }
 
     // modify
     return ArrayNode(count, arrayUpdate(frag, newChild, children));
 };
 
-empty._modify = function (_, op, h, k, size) {
-    if (op.__hamt_delete_op) return empty;
+var empty__modify = function empty__modify(_, op, h, k, size) {
+    if (op.__hamt_delete_op) return undefined;
     var newValue = op.__hamt_set_op ? op.value : op();
     ++size.value;
     return Leaf(h, k, newValue);
@@ -422,6 +418,8 @@ Map.prototype.setTree = function (root, size) {
     Returns the value or `alt` if none.
 */
 var tryGetHash = hamt.tryGetHash = function (alt, hash, key, map) {
+    if (!map._root) return alt;
+
     var node = map._root;
     var shift = 0;
     while (true) {
@@ -536,7 +534,7 @@ Map.prototype.has = function (key) {
 /**
     Empty node.
 */
-hamt.empty = new Map(empty, 0);
+hamt.empty = new Map(undefined, 0);
 
 /**
     Is `value` a map?
@@ -549,7 +547,7 @@ hamt.isMap = function (value) {
     Does `map` contain any elements?
 */
 hamt.isEmpty = function (map) {
-    return !!(hamt.isMap(map) && isEmptyNode(map._root));
+    return hamt.isMap(map) && !map._root;
 };
 
 Map.prototype.isEmpty = function () {
@@ -572,7 +570,7 @@ Map.prototype.isEmpty = function () {
 */
 var modifyHash = hamt.modifyHash = function (f, hash, key, map) {
     var size = { value: map._size };
-    var newRoot = map._root._modify(0, f, hash, key, size);
+    var newRoot = map._root ? map._root._modify(0, f, hash, key, size) : empty__modify(0, f, hash, key, size);
     return map.setTree(newRoot, size.value);
 };
 
@@ -686,7 +684,7 @@ var appk = function appk(k) {
 var lazyVisitChildren = function lazyVisitChildren(len, children, i, f, k) {
     while (i < len) {
         var child = children[i++];
-        if (child && !isEmptyNode(child)) return lazyVisit(child, f, { len: len, children: children, i: i, f: f, k: k });
+        if (child) return lazyVisit(child, f, { len: len, children: children, i: i, f: f, k: k });
     }
     return appk(k);
 };
@@ -695,19 +693,10 @@ var lazyVisitChildren = function lazyVisitChildren(len, children, i, f, k) {
     Recursively visit all values stored in `node` lazily.
 */
 var lazyVisit = function lazyVisit(node, f, k) {
-    switch (node.type) {
-        case LEAF:
-            return { value: f(node), rest: k };
+    if (node.type === LEAF) return { value: f(node), rest: k };
 
-        case COLLISION:
-        case ARRAY:
-        case INDEX:
-            var children = node.children;
-            return lazyVisitChildren(children.length, children, 0, f, k);
-
-        default:
-            return appk(k);
-    }
+    var children = node.children;
+    return lazyVisitChildren(children.length, children, 0, f, k);
 };
 
 var DONE = { done: true };
@@ -734,7 +723,7 @@ MapIterator.prototype[Symbol.iterator] = function () {
     Lazily visit each value in map with function `f`.
 */
 var visit = function visit(map, f) {
-    return new MapIterator(lazyVisit(map._root, f));
+    return new MapIterator(map._root ? lazyVisit(map._root, f) : undefined);
 };
 
 /**
@@ -798,6 +787,8 @@ Map.prototype.values = function () {
 */
 var fold = hamt.fold = function (f, z, m) {
     var root = m._root;
+    if (!root) return z;
+
     if (root.type === LEAF) return f(z, root.value, root.key);
 
     var toVisit = [root.children];
@@ -805,7 +796,7 @@ var fold = hamt.fold = function (f, z, m) {
     while (children = toVisit.pop()) {
         for (var i = 0, len = children.length; i < len;) {
             var child = children[i++];
-            if (child && child.type) {
+            if (child) {
                 if (child.type === LEAF) z = f(z, child.value, child.key);else toVisit.push(child.children);
             }
         }
