@@ -13,5 +13,7 @@ gulp.task("default", () =>
         .pipe(sourcemaps.write("."))
         .pipe(gulp.dest("./")));
 
-gulp.watch('lib/*.js', ['default']);
+gulp.task('watch', () => {
+    gulp.watch('lib/*.js', ['default']);
+});
 
