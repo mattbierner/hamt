@@ -3,6 +3,14 @@ const hamt = require('../hamt');
 const assert = require('chai').assert;
 
 describe('fold', () => {
+    it('should return default value for empty map', () => {
+        let h = hamt.empty;
+        assert.strictEqual(5, h.fold(() => assert.ok(false), 5));
+
+        const val = {};
+        assert.strictEqual(val, h.fold(() => assert.ok(false), val));
+    });
+
     it('should handle large folds correctly', () => {
         let h = hamt.empty;
         
@@ -13,8 +21,6 @@ describe('fold', () => {
         }
         
         assert.strictEqual(sum, h.fold((p, c) => p + c, 0));
-
     });
-
 });
 

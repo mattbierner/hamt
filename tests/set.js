@@ -19,7 +19,6 @@ describe('set', () => {
         assert.strictEqual(undefined, hamt.get('b', h));
     });
     
-    
     it('should overwrite entry in existing map', () => {
         const h1 = hamt.empty
             .set('a', 3)

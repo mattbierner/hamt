@@ -19,6 +19,13 @@ describe('remove', () => {
         assert.strictEqual(3, hamt.get('a', h1));
     });
 
+    it('should allow removing non existant values', () => {
+        const h1 = hamt.empty.set('a', 3);
+        const h2 = h1.remove('z').remove('y');
+
+        assert.strictEqual(h1, h2);
+    });
+
     it('should only remove a single entry', () => {
         const h1 = hamt.empty
             .set('a', 3)
