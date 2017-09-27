@@ -3,5 +3,5 @@ node_js:
   - "node"
 install:
   - npm install -g gulp
-  — npm install
+  - npm install
 before_script: gulp
