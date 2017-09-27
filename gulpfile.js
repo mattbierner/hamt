@@ -8,7 +8,7 @@ gulp.task("default", () =>
         .pipe(plumber())
         .pipe(sourcemaps.init())
         .pipe(babel({
-            presets: ['es2015']
+            presets: ['env']
         }))
         .pipe(sourcemaps.write("."))
         .pipe(gulp.dest("./")));
