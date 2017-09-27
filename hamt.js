@@ -791,13 +791,13 @@ var fold = hamt.fold = function (f, z, m) {
 
     if (root.type === LEAF) return f(z, root.value, root.key);
 
-    var toVisit = [root.children];
-    var children = void 0;
-    while (children = toVisit.pop()) {
+    for (var toVisit = root; toVisit;) {
+        var children = toVisit.children;
+        toVisit = toVisit.next;
         for (var i = 0, len = children.length; i < len;) {
             var child = children[i++];
             if (child) {
-                if (child.type === LEAF) z = f(z, child.value, child.key);else toVisit.push(child.children);
+                if (child.type === LEAF) z = f(z, child.value, child.key);else toVisit = { children: child.children, next: toVisit };
             }
         }
     }
