@@ -1,6 +1,6 @@
 {
     "name": "hamt",
-    "version": "2.2.1",
+    "version": "2.2.2",
     "description": "Hash Array Mapped Trie",
     "keywords": [
         "trie",
@@ -18,8 +18,7 @@
     },
     "main": "hamt.js",
     "files": [
-        "hamt.js",
-        "hamt.js.map"
+        "hamt.js"
     ],
     "dependencies": {},
     "devDependencies": {

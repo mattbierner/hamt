@@ -1,5 +1,9 @@
 # ChangeLog #
 
+## 2.2.2 - September 24, 2017
+* Propagate collapse of indexed nodes
+* Further internal optimizations.
+
 ## 2.2.1 - September 24, 2017
 * Small optimizations.
 
