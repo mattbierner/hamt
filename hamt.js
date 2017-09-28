@@ -278,28 +278,28 @@ var mergeLeaves = function mergeLeaves(shift, h1, n1, h2, n2) {
 
     @param hash Hash of collision.
     @param list Collision list.
-    @param f Update function.
+    @param op Update operation.
     @param k Key to update.
     @param size Size reference
 */
-var updateCollisionList = function updateCollisionList(h, list, f, k, size) {
+var updateCollisionList = function updateCollisionList(h, list, op, k, size) {
     var len = list.length;
     for (var i = 0; i < len; ++i) {
         var child = list[i];
         if (child.key === k) {
             var value = child.value;
-            if (f.__hamt_delete_op) {
+            if (op.__hamt_delete_op) {
                 --size.value;
                 return arraySpliceOut(i, list);
             }
-            var _newValue = f.__hamt_set_op ? f.value : f(value);
+            var _newValue = op.__hamt_set_op ? op.value : op(value);
             if (_newValue === value) return list;
             return arrayUpdate(i, Leaf(h, k, _newValue), list);
         }
     }
 
-    if (f.__hamt_delete_op) return list;
-    var newValue = f.__hamt_set_op ? f.value : f();
+    if (op.__hamt_delete_op) return list;
+    var newValue = op.__hamt_set_op ? op.value : op();
     ++size.value;
     return arrayUpdate(len, Leaf(h, k, newValue), list);
 };
@@ -364,7 +364,7 @@ var IndexedNode__modify = function IndexedNode__modify(shift, op, h, k, size) {
     }
 
     // modify
-    return children.length === 1 && isLeaf(newChild) ? newChild // propagate collapse
+    return op.__hamt_delete_op && children.length === 1 && isLeaf(newChild) ? newChild // propagate collapse
     : IndexedNode(mask, arrayUpdate(indx, newChild, children));
 };
 
