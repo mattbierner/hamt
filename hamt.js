@@ -400,14 +400,14 @@ var empty__modify = function empty__modify(_, op, h, k, size) {
 /*
  ******************************************************************************/
 function Map(root, size) {
-    this._root = root;
-    this._size = size;
+    this.root = root;
+    this.size = size;
 };
 
 Map.prototype.__hamt_isMap = true;
 
 Map.prototype.setTree = function (root, size) {
-    return root === this._root ? this : new Map(root, size);
+    return root === this.root ? this : new Map(root, size);
 };
 
 /* Queries
@@ -418,9 +418,9 @@ Map.prototype.setTree = function (root, size) {
     Returns the value or `alt` if none.
 */
 var tryGetHash = hamt.tryGetHash = function (alt, hash, key, map) {
-    if (!map._root) return alt;
+    if (!map.root) return alt;
 
-    var node = map._root;
+    var node = map.root;
     var shift = 0;
     while (true) {
         switch (node.type) {
@@ -547,7 +547,7 @@ hamt.isMap = function (value) {
     Does `map` contain any elements?
 */
 hamt.isEmpty = function (map) {
-    return hamt.isMap(map) && !map._root;
+    return hamt.isMap(map) && !map.root;
 };
 
 Map.prototype.isEmpty = function () {
@@ -569,8 +569,8 @@ Map.prototype.isEmpty = function () {
     Returns a map with the modified value. Does not alter `map`.
 */
 var modifyHash = hamt.modifyHash = function (f, hash, key, map) {
-    var size = { value: map._size };
-    var newRoot = map._root ? map._root._modify(0, f, hash, key, size) : empty__modify(0, f, hash, key, size);
+    var size = { value: map.size };
+    var newRoot = map.root ? map.root._modify(0, f, hash, key, size) : empty__modify(0, f, hash, key, size);
     return map.setTree(newRoot, size.value);
 };
 
@@ -723,7 +723,7 @@ MapIterator.prototype[Symbol.iterator] = function () {
     Lazily visit each value in map with function `f`.
 */
 var visit = function visit(map, f) {
-    return new MapIterator(map._root ? lazyVisit(map._root, f) : undefined);
+    return new MapIterator(map.root ? lazyVisit(map.root, f) : undefined);
 };
 
 /**
@@ -786,7 +786,7 @@ Map.prototype.values = function () {
     @param m HAMT
 */
 var fold = hamt.fold = function (f, z, m) {
-    var root = m._root;
+    var root = m.root;
     if (!root) return z;
 
     if (root.type === LEAF) return f(z, root.value, root.key);
@@ -832,16 +832,12 @@ Map.prototype.forEach = function (f) {
     Get the number of entries in `map`.
 */
 var count = hamt.count = function (map) {
-    return map._size;
+    return map.size;
 };
 
 Map.prototype.count = function () {
     return count(this);
 };
-
-Object.defineProperty(Map.prototype, 'size', {
-    get: Map.prototype.count
-});
 
 /* Export
  ******************************************************************************/
