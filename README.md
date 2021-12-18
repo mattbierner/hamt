@@ -27,7 +27,7 @@ h.get('key') === 'value'
 for (let [key, value] of h)
     console.log(key, value);
 
-Array.from(h.values()) === [{ prop: 1 }, 'value'], null];
+Array.from(h.values()) === [{ prop: 1 }, 'value', null];
 
 // The data structure is fully immutable
 var h2 = h.delete('key');
